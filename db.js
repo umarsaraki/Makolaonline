@@ -2,13 +2,23 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'makolaonline',
-  password: process.env.DB_PASSWORD || 'password',
-  port: process.env.DB_PORT || 5432,
-});
+// Render (and most hosts) give you ONE connection string called DATABASE_URL.
+// Locally, most people prefer separate DB_USER/DB_HOST/etc fields.
+// This supports both — DATABASE_URL wins if it's set.
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      // Render's hosted Postgres requires SSL, but its self-signed cert
+      // fails default verification — this is the standard safe workaround.
+      ssl: { rejectUnauthorized: false },
+    })
+  : new Pool({
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'makolaonline',
+      password: process.env.DB_PASSWORD || 'password',
+      port: process.env.DB_PORT || 5432,
+    });
 
 pool.on('connect', () => console.log('✅ Connected to PostgreSQL (MakolaOnline)'));
 pool.on('error', (err) => console.error('❌ Unexpected PostgreSQL error:', err));
