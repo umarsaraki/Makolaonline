@@ -576,6 +576,9 @@ const PORT = process.env.PORT || 5000;
 initSchema()
   .then(() => app.listen(PORT, () => console.log(`🇬🇭 MakolaOnline running on http://localhost:${PORT}`)))
   .catch((err) => {
-    console.error('❌ Failed to initialize database schema:', err);
+    console.error('❌ Failed to initialize database schema:', err.message);
+    console.error('   → If you see ECONNREFUSED to ::1 or 127.0.0.1, the app is not reading your database credentials.');
+    console.error('   → On Render: set DATABASE_URL in the web service\'s Environment tab to the Postgres "Internal Database URL".');
+    console.error('   → Locally: fill in DB_USER/DB_HOST/DB_NAME/DB_PASSWORD/DB_PORT in your .env file.');
     process.exit(1);
   });
