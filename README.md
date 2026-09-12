@@ -46,21 +46,54 @@ The server automatically creates every table listed in the schema the first time
 | Variable | Purpose |
 |---|---|
 | `PORT` | Port the server listens on (default 5000) |
-| `DB_USER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT` | PostgreSQL connection |
+| `DATABASE_URL` / `DB_USER`,`DB_HOST`,`DB_NAME`,`DB_PASSWORD`,`DB_PORT` | PostgreSQL connection (see section 2) |
 | `JWT_SECRET` | Signs login tokens — use a long random string in production |
 | `ADMIN_EMAIL` | Whichever registered account uses this email automatically gets full Admin Panel access |
-| `MOMO_NUMBER`, `MOMO_NAME`, `BANK_NAME`, `BANK_ACCOUNT_NUMBER`, `BANK_ACCOUNT_NAME` | Shown to users on the Deposit screen |
+| `BASE_URL` | Your site's own URL, no trailing slash — used to build the Flutterwave return link |
+| `FLW_SECRET_KEY` | From Flutterwave Dashboard → Settings → API Keys |
+| `FLW_WEBHOOK_HASH` | A secret string you invent — set the same value in Flutterwave Dashboard → Settings → Webhooks → "Secret Hash" |
+| `CASHBACK_PERCENT` | % of an order's total given back as cashback once the order is completed (default 3) |
+| `VENDOR_APPLICATION_FEE` | GHS fee deducted from a user's Available Balance when they apply to become a Reseller/Employer, credited to Admin (default 50) |
 
 ## 4. How it works
 
 - **Sign up / Login** issues a JWT stored in the browser, sent as `Authorization: Bearer <token>` on every request.
-- **Admin access** is not a checkbox in the database — whoever logs in with the email in `ADMIN_EMAIL` automatically sees the ADMIN tab and can approve vendors, products, jobs, deposits, ban users, and manage banners.
-- **Becoming a Reseller/Employer**: user applies on the MKO-VENDOR page → row created in `vendor_applications` (status `pending`) → Admin approves → the user's `role` column updates → their dashboard unlocks on the Profile page.
+- **Admin access** is not a checkbox in the database — whoever logs in with the email in `ADMIN_EMAIL` automatically sees the Admin Panel (inside Profile) with tabs for Wallet, Add Vendor, Applications, Subscriptions, Products, Jobs, Coupons, Deposits, Orders, Users, Banners, Notifications, Settings, User Lookup, and History.
+- **Becoming a Reseller/Employer** — two ways:
+  - *Self-serve*: user applies on MKO-VENDOR, picks a plan (Starter/Business/Unlimited for resellers, or the single Employer plan), optionally enters a coupon, and the first month's price is deducted from their Available Balance and credited to Admin. Admin still approves before the role/subscription activates; rejecting refunds the payment.
+  - *Admin-added*: Admin → Add Vendor creates a fully-verified reseller/employer directly (Ghana Card, bank account, business info) with no payment collected and no self-serve approval step.
 - **Products/Jobs**: created as `pending` → only visible on HOME/SERVICES once Admin sets `status = 'approved'`.
-- **Wallet & Deposits**: user requests a deposit → sends money via the MoMo/Bank details shown → uploads a screenshot link → Admin approves in the Admin Panel → `wallet.balance` increases.
-- **Orders**: checkout deducts the total straight from the shopping wallet balance (atomically, in a DB transaction) and creates the order as `processing`. Admin can move it through `shipped` → `completed`, or `rejected`.
-- **Cashback**: tracked in `wallet_transactions` with `type='cashback'`; the Wallet tab shows "All Cashback" (every record) and "Available Cashback" (sum of the approved ones).
+
+### Subscription plans
+| Plan | Price/mo | Product limit | Max item price |
+|---|---|---|---|
+| Starter | ₵20 | 20 | ₵1,000 |
+| Business | ₵50 | Unlimited | ₵5,000 |
+| Unlimited | ₵100 | Unlimited | Unlimited |
+| Employer | ₵100 | Unlimited jobs | — |
+
+Renewal is automatic: every hour the server checks for subscriptions due, and tries to deduct the plan price from the user's Available Balance. If there isn't enough, the subscription becomes `past_due` and their dashboard (creating/editing products or jobs) is blocked until they deposit and either wait for the next automatic retry, use "Renew Now" in Profile → My Subscription, or Admin renews them for free (Admin Panel → Subscriptions). Prices, limits, and caps are seeded in `db.js` — edit the `plans` array there if they ever need to change.
+
+### Coupons
+Admin creates percent-off codes for three audiences: **new_reseller** (first-time plan signup), **existing_reseller** (renewal/upgrade), or **shopping** (checkout). Each coupon can be restricted to one person's email or left open to everyone, with an optional expiry. A shopping discount is absorbed by the platform — resellers still receive their full sale amount in escrow.
+
+### Notifications
+Admin → Notifications sends a message to Everyone, Resellers only (covers both reseller and employer accounts), or Customers only. Users see unread ones via the 🔔 bell icon in the header.
+
+### Wallet — three balances per user
+- **Available** — spendable and withdrawable. Grows from deposits, released sales, and converted cashback.
+- **Cashback** — accumulates automatically (a % of each completed order, set in Admin → Settings). A "Move Cashback → Available" button lets the user convert it whenever they like. Unused cashback expires automatically after the configured number of days (default 180).
+- **Pending** (Resellers only) — a reseller's share of a sale sits here as escrow the moment an order is placed. It only moves to their Available balance once Admin marks that order **completed**. If Admin marks it **rejected** instead, the held amount is cancelled and the customer is refunded in full (into their Available balance, tracked as "Refund").
+
+### Deposits & Withdrawals — powered by Flutterwave
+- **Deposit**: user picks an amount → gets redirected to Flutterwave's hosted checkout (card, bank transfer, or mobile money — Flutterwave handles the entry itself, MakolaOnline never touches card numbers). A webhook (`POST /api/webhooks/flutterwave`) confirms the payment server-side and credits Available balance automatically — this works even if the user closes the app right after paying.
+- **Withdraw**: user adds a bank account (verified via Flutterwave's account-resolve API, so the account holder's name is confirmed before saving), sets a **5-digit security code** once, then enters amount + security code to withdraw. On success, Flutterwave's Transfer API sends the money out automatically. If the transfer fails, the amount is refunded back to Available automatically. Admin can reset anyone's forgotten security code from Admin → Users, or the dedicated reset endpoint.
+- **Webhook URL to register in Flutterwave Dashboard**: `https://<your-domain>/api/webhooks/flutterwave` — set the Secret Hash there to match `FLW_WEBHOOK_HASH`.
+- **Admin's own money**: Admin sees a "Main Wallet" total across *everyone* for oversight only — that money isn't Admin's and can't be withdrawn. Admin's own withdrawable balance is separate: only their own deposits plus plan payments/fees they've collected from vendors.
+
+- **Orders**: checkout deducts the total from the customer's Available balance (atomically) and creates the order as `processing`, while crediting each reseller's Pending balance. Admin can move it through `shipped` → `completed` (releases Pending → Available + gives cashback) or `rejected` (cancels Pending, refunds the customer).
 - **Fraud / Bans**: Admin → Users → Ban writes `status='banned'` on the user and auto-logs it to `history`. A banned user is blocked at the authentication middleware on every request.
+- **User Lookup**: Admin → User Lookup finds anyone's full order + wallet history by email, for support/dispute cases.
 
 ## 5. Deploying on Render
 
@@ -73,9 +106,13 @@ The server automatically creates every table listed in the schema the first time
    - `DATABASE_URL` = the Internal Database URL you copied in step 2
    - `JWT_SECRET` = any long random string
    - `ADMIN_EMAIL` = the email that should get Admin Panel access
-   - `MOMO_NUMBER`, `MOMO_NAME`, `BANK_NAME`, `BANK_ACCOUNT_NUMBER`, `BANK_ACCOUNT_NAME`
+   - `BASE_URL` = your Render URL, e.g. `https://makolaonline.onrender.com`
+   - `FLW_SECRET_KEY`, `FLW_WEBHOOK_HASH`
    - Leave `DB_USER`, `DB_HOST`, etc. out entirely — `DATABASE_URL` covers all of them.
-5. Deploy. If the logs show `ECONNREFUSED ::1:5432` or `127.0.0.1:5432`, it means `DATABASE_URL` isn't set (or isn't spelled exactly that way) in the Environment tab — the app is falling back to "localhost", which doesn't exist on Render.
+5. In your **Flutterwave Dashboard** → Settings → Webhooks, set the webhook URL to `https://<your-render-url>/api/webhooks/flutterwave` and the Secret Hash to the same value as `FLW_WEBHOOK_HASH`.
+6. Deploy. If the logs show `ECONNREFUSED ::1:5432` or `127.0.0.1:5432`, it means `DATABASE_URL` isn't set (or isn't spelled exactly that way) in the Environment tab — the app is falling back to "localhost", which doesn't exist on Render.
+
+⚠️ **This update changes several table structures** (wallet types, plans, subscriptions, coupons, notifications, etc). If your test database already has data from before this update, the safest move is to drop and let the app recreate everything fresh (`DROP TABLE wallet, wallet_transactions, vendor_applications, bank_accounts, order_items, orders CASCADE;` then redeploy) — `db.js` auto-creates and re-seeds everything on boot.
 
 ## 6. Notes & next steps
 
