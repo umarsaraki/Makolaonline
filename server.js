@@ -69,45 +69,20 @@ async function expireCashback(userId) {
   }
 }
 
-// Charges (or suspends) one subscription that's due for renewal. Safe to call repeatedly.
-async function processRenewal(sub) {
-  if (sub.status === 'cancelled' || new Date(sub.renews_at) > new Date()) return;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const planRes = await client.query('SELECT * FROM plans WHERE id=$1', [sub.plan_id]);
-    const plan = planRes.rows[0];
-    const balRes = await client.query(`SELECT balance FROM wallet WHERE user_id=$1 AND type='available' FOR UPDATE`, [sub.user_id]);
-    const bal = balRes.rows[0] ? Number(balRes.rows[0].balance) : 0;
-
-    if (bal >= Number(plan.price)) {
-      await adjustWallet(client, sub.user_id, 'available', -Number(plan.price));
-      await client.query(
-        `INSERT INTO wallet_transactions (user_id, amount, type, status) VALUES ($1,$2,'subscription','approved')`,
-        [sub.user_id, -Number(plan.price)]
-      );
-      await client.query(
-        `UPDATE subscriptions SET status='active', renews_at = renews_at + INTERVAL '1 month' WHERE id=$1`,
-        [sub.id]
-      );
-      await client.query('COMMIT');
-      await logHistory(sub.user_id, 'subscription_renewed', `${plan.name} plan renewed — ₵${plan.price}`);
-    } else {
-      await client.query(`UPDATE subscriptions SET status='past_due' WHERE id=$1`, [sub.id]);
-      await client.query('COMMIT');
-      await logHistory(sub.user_id, 'subscription_suspended', `${plan.name} plan renewal failed — insufficient balance`);
-    }
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('processRenewal failed:', err.message);
-  } finally {
-    client.release();
+// No automatic charging. This only keeps the displayed/gating status honest: if the renewal
+// date has passed and nobody has renewed yet (manually, or by Admin), it flips to 'past_due' —
+// which blocks new products/jobs until the user renews via "Renew Now" or Admin renews them free.
+async function syncSubscriptionStatus(sub) {
+  if (sub.status === 'active' && new Date(sub.renews_at) < new Date()) {
+    await pool.query(`UPDATE subscriptions SET status='past_due' WHERE id=$1`, [sub.id]);
+    sub.status = 'past_due';
   }
+  return sub;
 }
 
 async function checkUserRenewal(userId) {
   const { rows } = await pool.query('SELECT * FROM subscriptions WHERE user_id=$1', [userId]);
-  if (rows[0]) await processRenewal(rows[0]);
+  if (rows[0]) await syncSubscriptionStatus(rows[0]);
 }
 
 // Finds+validates a coupon for a given audience/user, or throws a friendly error.
@@ -251,7 +226,7 @@ app.post('/api/auth/register', async (req, res) => {
     const user = rows[0];
 
     // Every user gets a shopping + cashback wallet from day one.
-    await pool.query(`INSERT INTO wallet (user_id, balance, type) VALUES ($1, 0, 'shopping'), ($1, 0, 'cashback')`, [user.id]);
+    await pool.query(`INSERT INTO wallet (user_id, balance, type) VALUES ($1,0,'available'),($1,0,'cashback'),($1,0,'pending')`, [user.id]);
     await logHistory(user.id, 'register', 'New account opened');
 
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '30d' });
@@ -1414,27 +1389,11 @@ app.get('*', (req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Background job — sweeps due subscription renewals every hour       */
-/* ------------------------------------------------------------------ */
-
-async function sweepSubscriptionRenewals() {
-  try {
-    const { rows } = await pool.query(`SELECT * FROM subscriptions WHERE renews_at < NOW() AND status != 'cancelled'`);
-    for (const sub of rows) await processRenewal(sub);
-    if (rows.length) console.log(`⏱️  Subscription sweep processed ${rows.length} due renewal(s).`);
-  } catch (err) {
-    console.error('Subscription sweep failed:', err.message);
-  }
-}
-
-/* ------------------------------------------------------------------ */
 
 const PORT = process.env.PORT || 5000;
 initSchema()
   .then(() => {
     app.listen(PORT, () => console.log(`🇬🇭 MakolaOnline running on http://localhost:${PORT}`));
-    sweepSubscriptionRenewals();
-    setInterval(sweepSubscriptionRenewals, 60 * 60 * 1000); // every hour
   })
   .catch((err) => {
     console.error('❌ Failed to initialize database schema:', err.message);
