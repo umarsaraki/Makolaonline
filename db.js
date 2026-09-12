@@ -163,8 +163,9 @@ CREATE TABLE IF NOT EXISTS wallet (
   UNIQUE(user_id, type)
 );
 -- Migrate any old 'shopping' rows from before this redesign, then lock in the new allowed types.
-UPDATE wallet SET type = 'available' WHERE type = 'shopping';
+-- Constraint is dropped BEFORE the data migration so a stale old constraint can never block it.
 ALTER TABLE wallet DROP CONSTRAINT IF EXISTS wallet_type_check;
+UPDATE wallet SET type = 'available' WHERE type = 'shopping';
 ALTER TABLE wallet ADD CONSTRAINT wallet_type_check CHECK (type IN ('available','cashback','pending'));
 
 CREATE TABLE IF NOT EXISTS wallet_transactions (
