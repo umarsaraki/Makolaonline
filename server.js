@@ -610,8 +610,9 @@ app.get('/api/reseller/products', authenticate, requireRole('reseller'), async (
 });
 
 app.post('/api/reseller/products', authenticate, requireRole('reseller'), async (req, res) => {
-  const { name, price, image, description, category } = req.body;
+  const { name, price, images, description, category, coupon_code, coupon_percent } = req.body;
   if (!name || !price) return res.status(400).json({ error: 'Name and price are required.' });
+  const imgArr = Array.isArray(images) ? images.filter(Boolean).slice(0, 5) : [];
   try {
     const sub = await requireActiveSubscription(req.user.id);
     if (sub.price_cap && Number(price) > Number(sub.price_cap)) {
@@ -627,16 +628,28 @@ app.post('/api/reseller/products', authenticate, requireRole('reseller'), async 
     return res.status(403).json({ error: err.message });
   }
   const { rows } = await pool.query(
-    `INSERT INTO products (reseller_id, name, price, image, description, category, status)
-     VALUES ($1,$2,$3,$4,$5,$6,'approved') RETURNING *`,
-    [req.user.id, name, price, image || null, description || null, category || null]
+    `INSERT INTO products (reseller_id, name, price, image, images, description, category, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'approved') RETURNING *`,
+    [req.user.id, name, price, imgArr[0] || null, JSON.stringify(imgArr), description || null, category || null]
   );
+  const product = rows[0];
+
+  if (coupon_code && coupon_percent) {
+    try {
+      await pool.query(
+        `INSERT INTO reseller_coupons (reseller_id, product_id, code, percent_off) VALUES ($1,$2,$3,$4)`,
+        [req.user.id, product.id, coupon_code.toUpperCase(), coupon_percent]
+      );
+    } catch (err) { /* duplicate code for this reseller — product still posts fine without it */ }
+  }
+
   await logHistory(req.user.id, 'product_create', `Added product: ${name}`);
-  res.status(201).json(rows[0]);
+  res.status(201).json(product);
 });
 
 app.put('/api/reseller/products/:id', authenticate, requireRole('reseller'), async (req, res) => {
-  const { name, price, image, description, category } = req.body;
+  const { name, price, images, description, category } = req.body;
+  const imgArr = Array.isArray(images) ? images.filter(Boolean).slice(0, 5) : undefined;
   try {
     const sub = await requireActiveSubscription(req.user.id);
     if (sub.price_cap && Number(price) > Number(sub.price_cap)) {
@@ -646,9 +659,9 @@ app.put('/api/reseller/products/:id', authenticate, requireRole('reseller'), asy
     return res.status(403).json({ error: err.message });
   }
   const { rows } = await pool.query(
-    `UPDATE products SET name=$1, price=$2, image=$3, description=$4, category=$5
-     WHERE id=$6 AND reseller_id=$7 RETURNING *`,
-    [name, price, image, description, category, req.params.id, req.user.id]
+    `UPDATE products SET name=$1, price=$2, image=COALESCE($3,image), images=COALESCE($4,images), description=$5, category=$6
+     WHERE id=$7 AND reseller_id=$8 RETURNING *`,
+    [name, price, imgArr ? (imgArr[0] || null) : null, imgArr ? JSON.stringify(imgArr) : null, description, category, req.params.id, req.user.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Product not found.' });
   res.json(rows[0]);
@@ -657,6 +670,42 @@ app.put('/api/reseller/products/:id', authenticate, requireRole('reseller'), asy
 app.delete('/api/reseller/products/:id', authenticate, requireRole('reseller'), async (req, res) => {
   await pool.query('DELETE FROM products WHERE id=$1 AND reseller_id=$2', [req.params.id, req.user.id]);
   res.json({ deleted: true });
+});
+
+// Dashboard header stats: products live, orders received, lifetime earnings.
+app.get('/api/reseller/dashboard', authenticate, requireRole('reseller'), async (req, res) => {
+  const [productsRes, ordersRes, earnedRes, subRes] = await Promise.all([
+    pool.query(`SELECT COUNT(*) FROM products WHERE reseller_id=$1 AND status='approved'`, [req.user.id]),
+    pool.query(
+      `SELECT COUNT(DISTINCT oi.order_id) FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE p.reseller_id=$1`,
+      [req.user.id]
+    ),
+    pool.query(`SELECT COALESCE(SUM(amount),0) AS total FROM wallet_transactions WHERE user_id=$1 AND type='pending_release' AND status='approved'`, [req.user.id]),
+    pool.query(`SELECT s.status, s.renews_at, p.name, p.price FROM subscriptions s JOIN plans p ON p.id=s.plan_id WHERE s.user_id=$1`, [req.user.id]),
+  ]);
+  res.json({
+    productsLive: Number(productsRes.rows[0].count),
+    ordersReceived: Number(ordersRes.rows[0].count),
+    earned: Number(earnedRes.rows[0].total),
+    subscription: subRes.rows[0] || null,
+  });
+});
+
+// Orders that include at least one of this reseller's products.
+app.get('/api/reseller/orders', authenticate, requireRole('reseller'), async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT o.id, o.order_no, o.status, o.created_at, u.name AS customer_name,
+            (SELECT SUM(oi2.qty * oi2.price) FROM order_items oi2 JOIN products p2 ON p2.id=oi2.product_id
+             WHERE oi2.order_id=o.id AND p2.reseller_id=$1) AS my_share
+     FROM orders o
+     JOIN order_items oi ON oi.order_id = o.id
+     JOIN products p ON p.id = oi.product_id
+     JOIN users u ON u.id = o.user_id
+     WHERE p.reseller_id = $1
+     ORDER BY o.created_at DESC`,
+    [req.user.id]
+  );
+  res.json(rows);
 });
 
 /* ------------------------------------------------------------------ */
@@ -705,6 +754,17 @@ app.delete('/api/employer/jobs/:id', authenticate, requireRole('employer'), asyn
   res.json({ deleted: true });
 });
 
+app.get('/api/employer/dashboard', authenticate, requireRole('employer'), async (req, res) => {
+  const [jobsRes, subRes] = await Promise.all([
+    pool.query(`SELECT COUNT(*) FROM jobs WHERE employer_id=$1 AND status='approved'`, [req.user.id]),
+    pool.query(`SELECT s.status, s.renews_at, p.name, p.price FROM subscriptions s JOIN plans p ON p.id=s.plan_id WHERE s.user_id=$1`, [req.user.id]),
+  ]);
+  res.json({
+    jobsLive: Number(jobsRes.rows[0].count),
+    subscription: subRes.rows[0] || null,
+  });
+});
+
 /* ------------------------------------------------------------------ */
 /* ADDRESSES — CRUD                                                    */
 /* ------------------------------------------------------------------ */
@@ -746,10 +806,22 @@ app.delete('/api/addresses/:id', authenticate, async (req, res) => {
 app.post('/api/orders', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, coupon_code } = req.body; // [{ product_id, qty }]
+    const { items, coupon_code, reseller_coupon_code } = req.body; // [{ product_id, qty }]
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Your cart is empty.' });
 
     await client.query('BEGIN');
+
+    // A reseller's own code discounts only their specific product's line — funded by
+    // reducing what THEY receive in escrow, never the platform.
+    let resellerCoupon = null;
+    if (reseller_coupon_code) {
+      const rc = await client.query(
+        `SELECT * FROM reseller_coupons WHERE code=$1 AND is_active=true`,
+        [reseller_coupon_code.toUpperCase()]
+      );
+      resellerCoupon = rc.rows[0] || null;
+      if (!resellerCoupon) throw new Error('Invalid discount code.');
+    }
 
     let total = 0;
     const priced = [];
@@ -757,7 +829,10 @@ app.post('/api/orders', authenticate, async (req, res) => {
       const { rows } = await client.query(`SELECT * FROM products WHERE id=$1 AND status='approved'`, [it.product_id]);
       const p = rows[0];
       if (!p) throw new Error('One of the items is no longer available or not yet approved.');
-      const lineTotal = Number(p.price) * Number(it.qty);
+      let lineTotal = Number(p.price) * Number(it.qty);
+      if (resellerCoupon && resellerCoupon.product_id === p.id) {
+        lineTotal = Math.round(lineTotal * (1 - resellerCoupon.percent_off / 100) * 100) / 100;
+      }
       total += lineTotal;
       priced.push({ product_id: p.id, qty: it.qty, reseller_id: p.reseller_id, lineTotal });
     }
@@ -786,7 +861,8 @@ app.post('/api/orders', authenticate, async (req, res) => {
         `INSERT INTO order_items (order_id, product_id, qty, price) VALUES ($1,$2,$3,$4)`,
         [order.id, it.product_id, it.qty, it.lineTotal / it.qty]
       );
-      // Resellers still get their full share — a shopping discount is funded by the platform, not the reseller.
+      // Resellers still get their full (possibly reseller-discounted) share — a platform
+      // shopping discount is funded by the platform, never the reseller.
       await adjustWallet(client, it.reseller_id, 'pending', it.lineTotal);
     }
     if (coupon) await redeemCoupon(client, coupon.id, req.user.id);
@@ -1132,6 +1208,18 @@ app.post('/api/notifications/:id/read', authenticate, async (req, res) => {
   await pool.query(
     `INSERT INTO notification_reads (notification_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
     [req.params.id, req.user.id]
+  );
+  res.json({ ok: true });
+});
+
+// Opening the bell dropdown counts as "viewing" — mark everything currently shown as read.
+app.post('/api/notifications/mark-all-read', authenticate, async (req, res) => {
+  const audienceMatch = req.user.role === 'customer' ? ['everyone', 'customers'] : ['everyone', 'resellers'];
+  await pool.query(
+    `INSERT INTO notification_reads (notification_id, user_id)
+     SELECT n.id, $1 FROM notifications n WHERE n.audience = ANY($2)
+     ON CONFLICT DO NOTHING`,
+    [req.user.id, audienceMatch]
   );
   res.json({ ok: true });
 });
