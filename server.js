@@ -7,14 +7,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
 const { pool, initSchema, logHistory, getSetting } = require('./db');
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
 
 const app = express();
@@ -25,25 +19,30 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Accepts one photo from the phone (camera roll or gallery) and hosts it on Cloudinary,
-// returning a URL to save on a product/banner. Render's own disk is wiped on every
-// restart, so images can't just be saved locally — this is why a real host is needed.
+// Accepts one photo from the phone (camera roll or gallery) and saves it straight into our
+// own PostgreSQL database — no external image-hosting service involved. Returns a URL that
+// points back at our own server (/api/images/:id), which serves the bytes on request.
 app.post('/api/upload-image', authenticate, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image was received.' });
-  if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    return res.status(500).json({ error: 'Image hosting is not configured yet — set the CLOUDINARY_* variables.' });
-  }
   try {
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream({ folder: 'makolaonline' }, (err, result) => {
-        if (err) reject(err); else resolve(result);
-      });
-      stream.end(req.file.buffer);
-    });
-    res.json({ url: result.secure_url });
+    const { rows } = await pool.query(
+      'INSERT INTO images (data, mime_type) VALUES ($1,$2) RETURNING id',
+      [req.file.buffer, req.file.mimetype]
+    );
+    res.json({ url: `/api/images/${rows[0].id}` });
   } catch (err) {
-    res.status(502).json({ error: 'Image upload failed: ' + err.message });
+    res.status(500).json({ error: 'Image upload failed: ' + err.message });
   }
+});
+
+// Serves a stored photo back out. Public (no auth) since these are shown on public
+// pages like Home — same as any normal image URL.
+app.get('/api/images/:id', async (req, res) => {
+  const { rows } = await pool.query('SELECT data, mime_type FROM images WHERE id=$1', [req.params.id]);
+  if (!rows[0]) return res.status(404).send('Not found');
+  res.set('Content-Type', rows[0].mime_type);
+  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  res.send(rows[0].data);
 });
 
 /* ------------------------------------------------------------------ */
