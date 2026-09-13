@@ -68,9 +68,6 @@ async function getCashbackPercent() {
 async function getCashbackExpiryDays() {
   return Number(await getSetting('cashback_expiry_days', 180));
 }
-function isValidGhanaCard(s) {
-  return /^GHA-\d{9}-\d$/.test(s || '');
-}
 
 // Sweeps out cashback that's older than the expiry window and hasn't been converted yet.
 async function expireCashback(userId) {
@@ -576,10 +573,31 @@ app.post('/api/subscription/renew-now', authenticate, async (req, res) => {
 // Runs the lazy renewal check, then returns { subscription, plan } or throws a friendly error.
 async function requireActiveSubscription(userId) {
   await checkUserRenewal(userId);
-  const { rows } = await pool.query(
+  let { rows } = await pool.query(
     `SELECT s.*, p.* , s.id AS sub_id, p.id AS plan_id FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.user_id=$1`,
     [userId]
   );
+  if (!rows[0]) {
+    // A verified reseller/employer should never be locked out just because a subscription
+    // record is missing (e.g. an older account from before this system existed) — give them
+    // a sensible default active plan automatically instead of blocking them.
+    const userRes = await pool.query('SELECT role FROM users WHERE id=$1', [userId]);
+    const role = userRes.rows[0]?.role;
+    const defaultCode = role === 'employer' ? 'employer' : 'starter';
+    const planRes = await pool.query('SELECT id FROM plans WHERE code=$1', [defaultCode]);
+    if (planRes.rows[0]) {
+      await pool.query(
+        `INSERT INTO subscriptions (user_id, plan_id, status, renews_at) VALUES ($1,$2,'active', NOW() + INTERVAL '1 month')
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId, planRes.rows[0].id]
+      );
+      const retry = await pool.query(
+        `SELECT s.*, p.* , s.id AS sub_id, p.id AS plan_id FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.user_id=$1`,
+        [userId]
+      );
+      rows = retry.rows;
+    }
+  }
   const sub = rows[0];
   if (!sub) throw new Error('No active subscription found.');
   if (sub.status !== 'active') throw new Error(`Your ${sub.name} plan is suspended (renewal payment failed). Please deposit and it will renew automatically, or ask Admin to renew you.`);
@@ -1345,7 +1363,7 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
   } = req.body;
   if (!['reseller', 'employer'].includes(type)) return res.status(400).json({ error: 'Choose reseller or employer.' });
   if (!name || !email) return res.status(400).json({ error: 'Full name and email are required.' });
-  if (ghana_card && !isValidGhanaCard(ghana_card)) return res.status(400).json({ error: 'Ghana Card must look like GHA-XXXXXXXXX-X.' });
+  if (ghana_card && !ghana_card.trim()) return res.status(400).json({ error: 'Ghana Card cannot be blank if provided.' });
 
   const planRes = await pool.query('SELECT * FROM plans WHERE code=$1 AND type=$2', [plan_code, type]);
   const plan = planRes.rows[0];
