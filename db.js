@@ -265,6 +265,15 @@ CREATE TABLE IF NOT EXISTS settings (
   key VARCHAR(50) PRIMARY KEY,
   value VARCHAR(255) NOT NULL
 );
+
+-- Uploaded photos (products, banners, KYC documents) live right here in our own
+-- database — no external image-hosting service involved.
+CREATE TABLE IF NOT EXISTS images (
+  id SERIAL PRIMARY KEY,
+  data BYTEA NOT NULL,
+  mime_type VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 `;
 
 async function initSchema() {
@@ -299,7 +308,7 @@ async function initSchema() {
      ON CONFLICT (key) DO NOTHING`
   );
 
-  console.log('✅ Schema ready (19 tables)');
+  console.log('✅ Schema ready (20 tables)');
 }
 
 async function getSetting(key, fallback) {
