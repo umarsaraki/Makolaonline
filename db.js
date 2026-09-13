@@ -50,6 +50,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS business_category VARCHAR(150);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS business_address VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS business_region VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS added_by_admin BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS position VARCHAR(100);
 
 -- Subscription plans for Resellers and the single Employer plan (must exist before
 -- vendor_applications, which references plan_id).
@@ -79,12 +80,28 @@ CREATE TABLE IF NOT EXISTS vendor_applications (
   type VARCHAR(20) NOT NULL CHECK (type IN ('reseller','employer')),
   plan_id INT REFERENCES plans(id),
   price_paid NUMERIC(10,2) NOT NULL DEFAULT 0,
+  full_address TEXT,
+  phone_verified BOOLEAN NOT NULL DEFAULT false,
+  id_type VARCHAR(30),
+  id_number VARCHAR(50),
+  id_front_url VARCHAR(255),
+  id_back_url VARCHAR(255),
+  selfie_url VARCHAR(255),
+  payout_number VARCHAR(50),
   status VARCHAR(20) NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending','approved','rejected')),
   created_at TIMESTAMP DEFAULT NOW()
 );
 ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS plan_id INT REFERENCES plans(id);
 ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS price_paid NUMERIC(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS full_address TEXT;
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS id_type VARCHAR(30);
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS id_number VARCHAR(50);
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS id_front_url VARCHAR(255);
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS id_back_url VARCHAR(255);
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS selfie_url VARCHAR(255);
+ALTER TABLE vendor_applications ADD COLUMN IF NOT EXISTS payout_number VARCHAR(50);
 
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
