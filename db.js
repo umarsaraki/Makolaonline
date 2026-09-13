@@ -109,12 +109,14 @@ CREATE TABLE IF NOT EXISTS products (
   name VARCHAR(150) NOT NULL,
   price NUMERIC(10,2) NOT NULL,
   image VARCHAR(255),
+  images JSONB NOT NULL DEFAULT '[]',
   description TEXT,
   category VARCHAR(100),
   status VARCHAR(20) NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending','approved','rejected')),
   created_at TIMESTAMP DEFAULT NOW()
 );
+ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]';
 
 CREATE TABLE IF NOT EXISTS jobs (
   id SERIAL PRIMARY KEY,
@@ -216,6 +218,19 @@ CREATE TABLE IF NOT EXISTS banners (
 ALTER TABLE banners ALTER COLUMN image_url DROP NOT NULL;
 ALTER TABLE banners ADD COLUMN IF NOT EXISTS text VARCHAR(255);
 
+-- A reseller's own discount code for one of their own products — the discount comes out
+-- of THEIR pending/payout, not the platform's (unlike the admin coupons table above).
+CREATE TABLE IF NOT EXISTS reseller_coupons (
+  id SERIAL PRIMARY KEY,
+  reseller_id INT REFERENCES users(id) ON DELETE CASCADE,
+  product_id INT REFERENCES products(id) ON DELETE CASCADE,
+  code VARCHAR(30) NOT NULL,
+  percent_off INT NOT NULL CHECK (percent_off BETWEEN 1 AND 100),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(reseller_id, code)
+);
+
 CREATE TABLE IF NOT EXISTS history (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
@@ -308,7 +323,7 @@ async function initSchema() {
      ON CONFLICT (key) DO NOTHING`
   );
 
-  console.log('✅ Schema ready (20 tables)');
+  console.log('✅ Schema ready (21 tables)');
 }
 
 async function getSetting(key, fallback) {
