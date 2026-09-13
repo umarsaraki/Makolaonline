@@ -289,6 +289,69 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
+/* Phone OTP verification (Termii) — used during vendor registration  */
+/* ------------------------------------------------------------------ */
+
+const OTP_BYPASS = process.env.OTP_BYPASS === 'true';
+
+app.post('/api/auth/send-otp', authenticate, async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Enter a phone number first.' });
+
+  if (OTP_BYPASS) {
+    return res.json({ pin_id: 'bypass', bypass: true });
+  }
+  if (!process.env.TERMII_API_KEY) {
+    return res.status(500).json({ error: 'OTP is not configured yet — set TERMII_API_KEY.' });
+  }
+  try {
+    const r = await fetch('https://api.ng.termii.com/api/sms/otp/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: process.env.TERMII_API_KEY,
+        message_type: 'NUMERIC',
+        to: phone,
+        from: process.env.TERMII_SENDER_ID || 'N-Alert',
+        channel: 'generic',
+        pin_attempts: 3,
+        pin_time_to_live: 5,
+        pin_length: 6,
+        pin_placeholder: '< 1234 >',
+        message_text: 'Your MakolaOnline verification code is < 1234 >',
+        pin_type: 'NUMERIC',
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok || !data.pinId) throw new Error(data.message || 'Could not send OTP.');
+    res.json({ pin_id: data.pinId });
+  } catch (err) {
+    res.status(502).json({ error: 'Could not send OTP: ' + err.message });
+  }
+});
+
+app.post('/api/auth/verify-otp', authenticate, async (req, res) => {
+  const { pin_id, pin } = req.body;
+  if (OTP_BYPASS || pin_id === 'bypass') {
+    return res.json({ verified: true });
+  }
+  if (!process.env.TERMII_API_KEY) {
+    return res.status(500).json({ error: 'OTP is not configured yet — set TERMII_API_KEY.' });
+  }
+  try {
+    const r = await fetch('https://api.ng.termii.com/api/sms/otp/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: process.env.TERMII_API_KEY, pin_id, pin }),
+    });
+    const data = await r.json();
+    res.json({ verified: data.verified === true || data.verified === 'True' });
+  } catch (err) {
+    res.status(502).json({ error: 'Could not verify OTP: ' + err.message });
+  }
+});
+
+/* ------------------------------------------------------------------ */
 /* HOME — banners + approved products (public)                        */
 /* ------------------------------------------------------------------ */
 
@@ -344,7 +407,13 @@ app.get('/api/plans', async (req, res) => {
 });
 
 app.post('/api/vendor/apply', authenticate, async (req, res) => {
-  const { type, plan_code, coupon_code } = req.body;
+  const {
+    type, plan_code, coupon_code,
+    full_name, phone, phone_verified, full_address,
+    id_type, id_number, id_front_url, id_back_url, selfie_url, payout_number,
+    business_name, business_category, business_address, business_region,
+    company_name, position, company_address,
+  } = req.body;
   if (!['reseller', 'employer'].includes(type)) return res.status(400).json({ error: 'Choose reseller or employer.' });
 
   const existing = await pool.query(
@@ -384,9 +453,35 @@ app.post('/api/vendor/apply', authenticate, async (req, res) => {
     }
     if (coupon) await redeemCoupon(client, coupon.id, req.user.id);
 
+    // Save the KYC + business/company info the wizard collected onto the account itself.
+    await client.query(
+      `UPDATE users SET
+         name = COALESCE($1, name),
+         phone = COALESCE($2, phone),
+         business_name = $3,
+         business_category = $4,
+         business_address = $5,
+         business_region = $6,
+         position = $7
+       WHERE id = $8`,
+      [
+        full_name || null, phone || null,
+        type === 'employer' ? (company_name || null) : (business_name || null),
+        business_category || null,
+        type === 'employer' ? (company_address || null) : (business_address || null),
+        business_region || null,
+        type === 'employer' ? (position || null) : null,
+        req.user.id,
+      ]
+    );
+
     const { rows } = await client.query(
-      `INSERT INTO vendor_applications (user_id, type, plan_id, price_paid) VALUES ($1, $2, $3, $4) RETURNING *`,
-      [req.user.id, type, plan.id, price]
+      `INSERT INTO vendor_applications
+         (user_id, type, plan_id, price_paid, full_address, phone_verified,
+          id_type, id_number, id_front_url, id_back_url, selfie_url, payout_number)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [req.user.id, type, plan.id, price, full_address || null, !!phone_verified,
+        id_type || null, id_number || null, id_front_url || null, id_back_url || null, selfie_url || null, payout_number || null]
     );
     await client.query('COMMIT');
     await logHistory(req.user.id, 'vendor_apply', `Applied to become ${type} on the ${plan.name} plan (₵${price})`);
@@ -515,8 +610,8 @@ app.post('/api/reseller/products', authenticate, requireRole('reseller'), async 
     return res.status(403).json({ error: err.message });
   }
   const { rows } = await pool.query(
-    `INSERT INTO products (reseller_id, name, price, image, description, category)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    `INSERT INTO products (reseller_id, name, price, image, description, category, status)
+     VALUES ($1,$2,$3,$4,$5,$6,'approved') RETURNING *`,
     [req.user.id, name, price, image || null, description || null, category || null]
   );
   await logHistory(req.user.id, 'product_create', `Added product: ${name}`);
@@ -534,7 +629,7 @@ app.put('/api/reseller/products/:id', authenticate, requireRole('reseller'), asy
     return res.status(403).json({ error: err.message });
   }
   const { rows } = await pool.query(
-    `UPDATE products SET name=$1, price=$2, image=$3, description=$4, category=$5, status='pending'
+    `UPDATE products SET name=$1, price=$2, image=$3, description=$4, category=$5
      WHERE id=$6 AND reseller_id=$7 RETURNING *`,
     [name, price, image, description, category, req.params.id, req.user.id]
   );
@@ -565,7 +660,7 @@ app.post('/api/employer/jobs', authenticate, requireRole('employer'), async (req
     return res.status(403).json({ error: err.message });
   }
   const { rows } = await pool.query(
-    `INSERT INTO jobs (employer_id, title, description, salary, location) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    `INSERT INTO jobs (employer_id, title, description, salary, location, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *`,
     [req.user.id, title, description || null, salary || null, location || null]
   );
   await logHistory(req.user.id, 'job_create', `Added job: ${title}`);
@@ -580,7 +675,7 @@ app.put('/api/employer/jobs/:id', authenticate, requireRole('employer'), async (
     return res.status(403).json({ error: err.message });
   }
   const { rows } = await pool.query(
-    `UPDATE jobs SET title=$1, description=$2, salary=$3, location=$4, status='pending'
+    `UPDATE jobs SET title=$1, description=$2, salary=$3, location=$4
      WHERE id=$5 AND employer_id=$6 RETURNING *`,
     [title, description, salary, location, req.params.id, req.user.id]
   );
