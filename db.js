@@ -313,6 +313,18 @@ CREATE TABLE IF NOT EXISTS order_messages (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Message Center: one running thread per user with Admin. Used when the Help Center bot
+-- can't answer a question, and it's the ONLY thing a banned account can still use.
+CREATE TABLE IF NOT EXISTS support_messages (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  sender_role VARCHAR(10) NOT NULL CHECK (sender_role IN ('user','admin')),
+  message TEXT NOT NULL,
+  read_by_admin BOOLEAN NOT NULL DEFAULT false,
+  read_by_user BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Uploaded photos (products, banners, KYC documents) live right here in our own
 -- database — no external image-hosting service involved.
 CREATE TABLE IF NOT EXISTS images (
@@ -355,7 +367,7 @@ async function initSchema() {
      ON CONFLICT (key) DO NOTHING`
   );
 
-  console.log('✅ Schema ready (22 tables)');
+  console.log('✅ Schema ready (23 tables)');
 }
 
 async function getSetting(key, fallback) {
