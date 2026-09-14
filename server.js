@@ -259,9 +259,30 @@ async function authenticate(req, res, next) {
     const user = rows[0];
     if (!user) return res.status(401).json({ error: 'Account not found.' });
     if (user.status === 'banned') {
-      return res.status(403).json({ error: 'Your account has been banned for fraud. Please contact admin.' });
+      return res.status(403).json({ error: 'Your account has been banned. Use the Message Center to reach Admin about this.' });
     }
     // The logged-in ADMIN_EMAIL always behaves as admin, even if role column says otherwise.
+    user.isAdmin = process.env.ADMIN_EMAIL && user.email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token.' });
+  }
+}
+
+// Same as authenticate, but lets a banned account through — used ONLY by the handful of
+// routes a banned user must still be able to reach (viewing their own status, and the
+// Message Center to appeal the ban to Admin). Everything else stays fully blocked.
+async function authenticateAllowBanned(req, res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Not logged in. Please log in.' });
+
+    const payload = jwt.verify(token, JWT_SECRET);
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [payload.id]);
+    const user = rows[0];
+    if (!user) return res.status(401).json({ error: 'Account not found.' });
     user.isAdmin = process.env.ADMIN_EMAIL && user.email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
     req.user = user;
     next();
@@ -1384,7 +1405,7 @@ app.post('/api/webhooks/flutterwave', express.json(), async (req, res) => {
 /* PROFILE + HISTORY                                                   */
 /* ------------------------------------------------------------------ */
 
-app.get('/api/profile', authenticate, async (req, res) => {
+app.get('/api/profile', authenticateAllowBanned, async (req, res) => {
   const user = { ...req.user };
   delete user.password_hash;
   res.json(user);
@@ -1429,6 +1450,27 @@ app.post('/api/notifications/mark-all-read', authenticate, async (req, res) => {
     [req.user.id, audienceMatch]
   );
   res.json({ ok: true });
+});
+
+/* ------------------------------------------------------------------ */
+/* MESSAGE CENTER — one thread per user with Admin. This is the ONLY   */
+/* thing a banned account can still use, plus the bot's escalation.    */
+/* ------------------------------------------------------------------ */
+
+app.get('/api/support/messages', authenticateAllowBanned, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at', [req.user.id]);
+  await pool.query(`UPDATE support_messages SET read_by_user=true WHERE user_id=$1 AND sender_role='admin'`, [req.user.id]);
+  res.json(rows);
+});
+
+app.post('/api/support/messages', authenticateAllowBanned, async (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message cannot be empty.' });
+  const { rows } = await pool.query(
+    `INSERT INTO support_messages (user_id, sender_role, message) VALUES ($1,'user',$2) RETURNING *`,
+    [req.user.id, message.trim()]
+  );
+  res.status(201).json(rows[0]);
 });
 
 /* ------------------------------------------------------------------ */
@@ -1521,11 +1563,13 @@ app.get('/api/admin/wallet-summary', authenticate, requireAdmin, async (req, res
   const totalByType = {};
   totals.rows.forEach(r => { totalByType[r.type] = Number(r.total); });
   const adminAvailable = await getWalletBalance(req.user.id, 'available');
+  const userCountRes = await pool.query('SELECT COUNT(*) FROM users');
   res.json({
     totalAvailable: totalByType.available || 0,
     totalCashback: totalByType.cashback || 0,
     totalPending: totalByType.pending || 0,
     adminAvailable, // this is the only figure Admin can actually withdraw
+    totalUsers: Number(userCountRes.rows[0].count),
   });
 });
 
@@ -1617,7 +1661,13 @@ app.post('/api/admin/orders/:id/resolve', authenticate, requireAdmin, async (req
 });
 
 app.get('/api/admin/users', authenticate, requireAdmin, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, name, email, phone, role, status, created_at FROM users ORDER BY created_at DESC');
+  const { role } = req.query;
+  const { rows } = await pool.query(
+    role
+      ? 'SELECT id, name, email, phone, role, status, created_at FROM users WHERE role=$1 ORDER BY created_at DESC'
+      : 'SELECT id, name, email, phone, role, status, created_at FROM users ORDER BY created_at DESC',
+    role ? [role] : []
+  );
   res.json(rows);
 });
 
@@ -1780,20 +1830,60 @@ app.put('/api/admin/settings', authenticate, requireAdmin, async (req, res) => {
 
 app.get('/api/admin/subscriptions', authenticate, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT s.*, u.name, u.email, p.name AS plan_name, p.price FROM subscriptions s
+    `SELECT s.*, u.name, u.email, p.name AS plan_name, p.price, p.type AS plan_type FROM subscriptions s
      JOIN users u ON u.id = s.user_id JOIN plans p ON p.id = s.plan_id ORDER BY s.renews_at`
   );
   res.json(rows);
 });
 
 app.post('/api/admin/subscriptions/:userId/renew', authenticate, requireAdmin, async (req, res) => {
+  const { plan_code } = req.body;
+  let planId = null;
+  if (plan_code) {
+    const p = await pool.query('SELECT id FROM plans WHERE code=$1', [plan_code]);
+    if (!p.rows[0]) return res.status(400).json({ error: 'Invalid plan.' });
+    planId = p.rows[0].id;
+  }
   const { rows } = await pool.query(
-    `UPDATE subscriptions SET status='active', renews_at=NOW() + INTERVAL '1 month' WHERE user_id=$1 RETURNING *`,
-    [req.params.userId]
+    planId
+      ? `UPDATE subscriptions SET status='active', plan_id=$2, renews_at=NOW() + INTERVAL '1 month' WHERE user_id=$1 RETURNING *`
+      : `UPDATE subscriptions SET status='active', renews_at=NOW() + INTERVAL '1 month' WHERE user_id=$1 RETURNING *`,
+    planId ? [req.params.userId, planId] : [req.params.userId]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Subscription not found.' });
-  await logHistory(req.params.userId, 'subscription_renewed_free', 'Renewed by Admin at no charge');
+  await logHistory(req.params.userId, 'subscription_renewed_free', 'Renewed by Admin at no charge' + (plan_code ? ` — switched to ${plan_code}` : ''));
   res.json(rows[0]);
+});
+
+/* ---- Admin side of the Message Center ---- */
+
+app.get('/api/admin/support/conversations', authenticate, requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT u.id AS user_id, u.name, u.email, u.status,
+           (SELECT message FROM support_messages sm WHERE sm.user_id=u.id ORDER BY sm.created_at DESC LIMIT 1) AS last_message,
+           (SELECT created_at FROM support_messages sm WHERE sm.user_id=u.id ORDER BY sm.created_at DESC LIMIT 1) AS last_at,
+           (SELECT COUNT(*) FROM support_messages sm WHERE sm.user_id=u.id AND sm.sender_role='user' AND sm.read_by_admin=false) AS unread
+    FROM users u WHERE EXISTS (SELECT 1 FROM support_messages sm WHERE sm.user_id=u.id)
+    ORDER BY last_at DESC
+  `);
+  res.json(rows);
+});
+
+app.get('/api/admin/support/messages/:userId', authenticate, requireAdmin, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at', [req.params.userId]);
+  await pool.query(`UPDATE support_messages SET read_by_admin=true WHERE user_id=$1 AND sender_role='user'`, [req.params.userId]);
+  res.json(rows);
+});
+
+app.post('/api/admin/support/messages/:userId', authenticate, requireAdmin, async (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message cannot be empty.' });
+  const { rows } = await pool.query(
+    `INSERT INTO support_messages (user_id, sender_role, message) VALUES ($1,'admin',$2) RETURNING *`,
+    [req.params.userId, message.trim()]
+  );
+  await notifyUser(req.params.userId, 'Admin replied in the Message Center.');
+  res.status(201).json(rows[0]);
 });
 
 app.post('/api/admin/banners', authenticate, requireAdmin, async (req, res) => {
