@@ -130,6 +130,60 @@ async function redeemCoupon(client, couponId, userId) {
   await client.query('INSERT INTO coupon_redemptions (coupon_id, user_id) VALUES ($1,$2)', [couponId, userId]);
 }
 
+// A notification aimed at exactly one person (as opposed to the admin's broadcast audiences).
+async function notifyUser(userId, message) {
+  await pool.query('INSERT INTO notifications (user_id, message) VALUES ($1,$2)', [userId, message]);
+}
+
+// Releases every reseller's escrowed share for this order into their Available balance,
+// and gives the customer cashback. Used both by the normal "customer confirms delivery"
+// flow and by Admin resolving a dispute in the reseller's favor.
+async function releaseOrderToResellers(client, order) {
+  const itemsRes = await client.query(
+    `SELECT oi.*, p.reseller_id FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1`,
+    [order.id]
+  );
+  for (const item of itemsRes.rows) {
+    const lineAmt = Number(item.price) * item.qty;
+    await adjustWallet(client, item.reseller_id, 'pending', -lineAmt);
+    await adjustWallet(client, item.reseller_id, 'available', lineAmt);
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, amount, type, status) VALUES ($1,$2,'pending_release','approved')`,
+      [item.reseller_id, lineAmt]
+    );
+    await notifyUser(item.reseller_id, `Payment received for order ${order.order_no} — ₵${lineAmt.toFixed(2)} added to your wallet.`);
+  }
+  const cashbackPercent = await getCashbackPercent();
+  if (cashbackPercent > 0) {
+    const cashbackAmt = Math.round(Number(order.total) * cashbackPercent) / 100;
+    const expiryDays = await getCashbackExpiryDays();
+    await adjustWallet(client, order.user_id, 'cashback', cashbackAmt);
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, amount, type, status, expires_at) VALUES ($1,$2,'cashback','approved', NOW() + ($3 || ' days')::INTERVAL)`,
+      [order.user_id, cashbackAmt, String(expiryDays)]
+    );
+  }
+}
+
+// Cancels every reseller's escrowed share for this order (no compensation) and refunds
+// the customer in full. Used both by a reseller's own rejection and by Admin resolving a
+// dispute in the customer's favor.
+async function refundOrderToCustomer(client, order) {
+  const itemsRes = await client.query(
+    `SELECT oi.*, p.reseller_id FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1`,
+    [order.id]
+  );
+  for (const item of itemsRes.rows) {
+    const lineAmt = Number(item.price) * item.qty;
+    await adjustWallet(client, item.reseller_id, 'pending', -lineAmt);
+  }
+  await adjustWallet(client, order.user_id, 'available', Number(order.total));
+  await client.query(
+    `INSERT INTO wallet_transactions (user_id, amount, type, status) VALUES ($1,$2,'refund','approved')`,
+    [order.user_id, Number(order.total)]
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Flutterwave — all payment/payout API calls live here, inline        */
 /* ------------------------------------------------------------------ */
@@ -694,7 +748,9 @@ app.get('/api/reseller/dashboard', authenticate, requireRole('reseller'), async 
 // Orders that include at least one of this reseller's products.
 app.get('/api/reseller/orders', authenticate, requireRole('reseller'), async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT DISTINCT o.id, o.order_no, o.status, o.created_at, u.name AS customer_name,
+    `SELECT DISTINCT o.id, o.order_no, o.status, o.created_at, o.delivery_deadline, o.reject_reason,
+            o.customer_address, o.customer_region, o.customer_phone, o.whatsapp_enabled, o.whatsapp_number,
+            u.name AS customer_name,
             (SELECT SUM(oi2.qty * oi2.price) FROM order_items oi2 JOIN products p2 ON p2.id=oi2.product_id
              WHERE oi2.order_id=o.id AND p2.reseller_id=$1) AS my_share
      FROM orders o
@@ -705,6 +761,7 @@ app.get('/api/reseller/orders', authenticate, requireRole('reseller'), async (re
      ORDER BY o.created_at DESC`,
     [req.user.id]
   );
+  for (const o of rows) await checkOrderExpiry(o);
   res.json(rows);
 });
 
@@ -806,8 +863,12 @@ app.delete('/api/addresses/:id', authenticate, async (req, res) => {
 app.post('/api/orders', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, coupon_code, reseller_coupon_code } = req.body; // [{ product_id, qty }]
+    const {
+      items, coupon_code, reseller_coupon_code,
+      full_name, phone, whatsapp_enabled, whatsapp_number, region, address,
+    } = req.body; // [{ product_id, qty }]
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Your cart is empty.' });
+    if (!full_name || !phone || !address) return res.status(400).json({ error: 'Full name, phone, and address are required.' });
 
     await client.query('BEGIN');
 
@@ -851,11 +912,13 @@ app.post('/api/orders', authenticate, async (req, res) => {
 
     const orderNo = genOrderNo();
     const orderRes = await client.query(
-      `INSERT INTO orders (user_id, order_no, total) VALUES ($1,$2,$3) RETURNING *`,
-      [req.user.id, orderNo, chargeTotal]
+      `INSERT INTO orders (user_id, order_no, total, customer_name, customer_phone, whatsapp_enabled, whatsapp_number, customer_region, customer_address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [req.user.id, orderNo, chargeTotal, full_name, phone, !!whatsapp_enabled, whatsapp_enabled ? phone : (whatsapp_number || null), region || null, address]
     );
     const order = orderRes.rows[0];
 
+    const resellerIds = new Set();
     for (const it of priced) {
       await client.query(
         `INSERT INTO order_items (order_id, product_id, qty, price) VALUES ($1,$2,$3,$4)`,
@@ -864,6 +927,7 @@ app.post('/api/orders', authenticate, async (req, res) => {
       // Resellers still get their full (possibly reseller-discounted) share — a platform
       // shopping discount is funded by the platform, never the reseller.
       await adjustWallet(client, it.reseller_id, 'pending', it.lineTotal);
+      resellerIds.add(it.reseller_id);
     }
     if (coupon) await redeemCoupon(client, coupon.id, req.user.id);
 
@@ -875,6 +939,9 @@ app.post('/api/orders', authenticate, async (req, res) => {
     );
 
     await client.query('COMMIT');
+    for (const rid of resellerIds) {
+      await notifyUser(rid, `New order ${orderNo} — review it and approve or decline.`);
+    }
     await logHistory(req.user.id, 'order_placed', `Order ${orderNo} - ₵${total}`);
     res.status(201).json(order);
   } catch (err) {
@@ -885,20 +952,159 @@ app.post('/api/orders', authenticate, async (req, res) => {
   }
 });
 
+// Lazily flips an order to 'expired' if its delivery deadline has passed and nobody has
+// confirmed delivery yet. No money moves here — it just flags the order for Admin review.
+async function checkOrderExpiry(order) {
+  if (['approved', 'shipped'].includes(order.status) && order.delivery_deadline && new Date(order.delivery_deadline) < new Date()) {
+    await pool.query(`UPDATE orders SET status='expired' WHERE id=$1`, [order.id]);
+    order.status = 'expired';
+    await notifyUser(order.user_id, `Order ${order.order_no} passed its delivery deadline without confirmation — our team is reviewing it.`);
+    const resRes = await pool.query(
+      `SELECT DISTINCT p.reseller_id FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1`,
+      [order.id]
+    );
+    for (const r of resRes.rows) {
+      await notifyUser(r.reseller_id, `Order ${order.order_no} passed its delivery deadline without customer confirmation — our team is reviewing it.`);
+    }
+  }
+  return order;
+}
+
 app.get('/api/orders', authenticate, async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+  for (const o of rows) await checkOrderExpiry(o);
   res.json(rows);
 });
 
 app.get('/api/orders/:id', authenticate, async (req, res) => {
   const orderRes = await pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
-  const order = orderRes.rows[0];
+  let order = orderRes.rows[0];
   if (!order) return res.status(404).json({ error: 'Order not found.' });
+  order = await checkOrderExpiry(order);
   const itemsRes = await pool.query(
     `SELECT oi.*, p.name, p.image FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1`,
     [order.id]
   );
   res.json({ ...order, items: itemsRes.rows });
+});
+
+// Customer confirms the goods actually arrived — this is the ONLY thing that releases
+// money to the reseller(s). Nothing pays out just because a reseller says "shipped".
+app.post('/api/orders/:id/mark-delivered', authenticate, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE', [req.params.id, req.user.id]);
+    const order = orderRes.rows[0];
+    if (!order) throw new Error('Order not found.');
+    if (order.status !== 'shipped') throw new Error('This order has not been marked as shipped yet.');
+    await releaseOrderToResellers(client, order);
+    await client.query(`UPDATE orders SET status='completed', escrow_settled=true WHERE id=$1`, [order.id]);
+    await client.query('COMMIT');
+    await logHistory(req.user.id, 'order_delivered_confirmed', `Order ${order.order_no}`);
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+/* ---- Reseller-side order actions ---- */
+
+app.post('/api/reseller/orders/:id/approve', authenticate, requireRole('reseller'), async (req, res) => {
+  const { delivery_days } = req.body;
+  const days = Number(delivery_days) > 0 ? Number(delivery_days) : 7;
+  const orderRes = await pool.query(
+    `SELECT o.* FROM orders o JOIN order_items oi ON oi.order_id=o.id JOIN products p ON p.id=oi.product_id
+     WHERE o.id=$1 AND p.reseller_id=$2 LIMIT 1`,
+    [req.params.id, req.user.id]
+  );
+  const order = orderRes.rows[0];
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  if (order.status !== 'processing') return res.status(400).json({ error: 'This order has already been reviewed.' });
+  await pool.query(
+    `UPDATE orders SET status='approved', delivery_deadline = NOW() + ($1 || ' days')::INTERVAL WHERE id=$2`,
+    [String(days), order.id]
+  );
+  await notifyUser(order.user_id, `Order ${order.order_no} approved! Expect delivery within ${days} day(s).`);
+  await logHistory(req.user.id, 'order_approved', `Order ${order.order_no} — ${days} day(s) to deliver`);
+  res.json({ ok: true });
+});
+
+app.post('/api/reseller/orders/:id/reject', authenticate, requireRole('reseller'), async (req, res) => {
+  const { reason } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query(
+      `SELECT o.* FROM orders o JOIN order_items oi ON oi.order_id=o.id JOIN products p ON p.id=oi.product_id
+       WHERE o.id=$1 AND p.reseller_id=$2 LIMIT 1 FOR UPDATE`,
+      [req.params.id, req.user.id]
+    );
+    const order = orderRes.rows[0];
+    if (!order) throw new Error('Order not found.');
+    if (order.status !== 'processing') throw new Error('This order has already been reviewed.');
+    await refundOrderToCustomer(client, order);
+    await client.query(`UPDATE orders SET status='rejected', reject_reason=$1, escrow_settled=true WHERE id=$2`, [reason || null, order.id]);
+    await client.query('COMMIT');
+    await notifyUser(order.user_id, `Order ${order.order_no} was declined${reason ? `: ${reason}` : '.'} Your money has been refunded.`);
+    await logHistory(req.user.id, 'order_rejected', `Order ${order.order_no} — ${reason || 'no reason given'}`);
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/reseller/orders/:id/ship', authenticate, requireRole('reseller'), async (req, res) => {
+  const orderRes = await pool.query(
+    `SELECT o.* FROM orders o JOIN order_items oi ON oi.order_id=o.id JOIN products p ON p.id=oi.product_id
+     WHERE o.id=$1 AND p.reseller_id=$2 LIMIT 1`,
+    [req.params.id, req.user.id]
+  );
+  const order = orderRes.rows[0];
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  if (order.status !== 'approved') return res.status(400).json({ error: 'Approve this order before marking it shipped.' });
+  await pool.query(`UPDATE orders SET status='shipped' WHERE id=$1`, [order.id]);
+  await notifyUser(order.user_id, `Order ${order.order_no} has been shipped! Please confirm once it arrives.`);
+  await logHistory(req.user.id, 'order_shipped', `Order ${order.order_no}`);
+  res.json({ ok: true });
+});
+
+/* ---- Order chat (customer <-> reseller, once approved) ---- */
+
+async function canAccessOrderChat(orderId, userId) {
+  const r = await pool.query(
+    `SELECT 1 FROM orders o WHERE o.id=$1 AND o.user_id=$2
+     UNION
+     SELECT 1 FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1 AND p.reseller_id=$2`,
+    [orderId, userId]
+  );
+  return r.rows.length > 0;
+}
+
+app.get('/api/orders/:id/messages', authenticate, async (req, res) => {
+  if (!(await canAccessOrderChat(req.params.id, req.user.id))) return res.status(403).json({ error: 'Not your order.' });
+  const { rows } = await pool.query(
+    `SELECT m.*, u.name AS sender_name FROM order_messages m JOIN users u ON u.id=m.sender_id WHERE m.order_id=$1 ORDER BY m.created_at`,
+    [req.params.id]
+  );
+  res.json(rows);
+});
+
+app.post('/api/orders/:id/messages', authenticate, async (req, res) => {
+  if (!(await canAccessOrderChat(req.params.id, req.user.id))) return res.status(403).json({ error: 'Not your order.' });
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message cannot be empty.' });
+  const { rows } = await pool.query(
+    `INSERT INTO order_messages (order_id, sender_id, message) VALUES ($1,$2,$3) RETURNING *`,
+    [req.params.id, req.user.id, message.trim()]
+  );
+  res.status(201).json(rows[0]);
 });
 
 /* ------------------------------------------------------------------ */
@@ -1198,7 +1404,8 @@ app.get('/api/notifications', authenticate, async (req, res) => {
   const { rows } = await pool.query(
     `SELECT n.*, (nr.id IS NOT NULL) AS is_read FROM notifications n
      LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1
-     WHERE n.audience = ANY($2) ORDER BY n.created_at DESC LIMIT 30`,
+     WHERE n.user_id = $1 OR n.audience = ANY($2)
+     ORDER BY n.created_at DESC LIMIT 30`,
     [req.user.id, audienceMatch]
   );
   res.json(rows);
@@ -1217,7 +1424,7 @@ app.post('/api/notifications/mark-all-read', authenticate, async (req, res) => {
   const audienceMatch = req.user.role === 'customer' ? ['everyone', 'customers'] : ['everyone', 'resellers'];
   await pool.query(
     `INSERT INTO notification_reads (notification_id, user_id)
-     SELECT n.id, $1 FROM notifications n WHERE n.audience = ANY($2)
+     SELECT n.id, $1 FROM notifications n WHERE n.user_id = $1 OR n.audience = ANY($2)
      ON CONFLICT DO NOTHING`,
     [req.user.id, audienceMatch]
   );
@@ -1326,12 +1533,13 @@ app.get('/api/admin/orders', authenticate, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
     `SELECT o.*, u.name, u.email FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC`
   );
+  for (const o of rows) await checkOrderExpiry(o);
   res.json(rows);
 });
 
 app.put('/api/admin/orders/:id/status', authenticate, requireAdmin, async (req, res) => {
   const { status } = req.body;
-  if (!['processing', 'shipped', 'completed', 'rejected'].includes(status)) {
+  if (!['processing', 'approved', 'shipped', 'completed', 'rejected'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status.' });
   }
   const client = await pool.connect();
@@ -1346,53 +1554,60 @@ app.put('/api/admin/orders/:id/status', authenticate, requireAdmin, async (req, 
 
     // Only settle escrow once per order, and only when moving into a terminal state.
     if (!order.escrow_settled && (status === 'completed' || status === 'rejected')) {
-      const itemsRes = await client.query(
-        `SELECT oi.*, p.reseller_id FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1`,
-        [order.id]
-      );
-
-      if (status === 'completed') {
-        // Release each reseller's held share from pending -> available.
-        for (const item of itemsRes.rows) {
-          const lineAmt = Number(item.price) * item.qty;
-          await adjustWallet(client, item.reseller_id, 'pending', -lineAmt);
-          await adjustWallet(client, item.reseller_id, 'available', lineAmt);
-          await client.query(
-            `INSERT INTO wallet_transactions (user_id, amount, type, status) VALUES ($1,$2,'pending_release','approved')`,
-            [item.reseller_id, lineAmt]
-          );
-        }
-        // Give the customer cashback on the full order total (rate + expiry are admin-configurable).
-        const cashbackPercent = await getCashbackPercent();
-        if (cashbackPercent > 0) {
-          const cashbackAmt = Math.round(Number(order.total) * cashbackPercent) / 100;
-          const expiryDays = await getCashbackExpiryDays();
-          await adjustWallet(client, order.user_id, 'cashback', cashbackAmt);
-          await client.query(
-            `INSERT INTO wallet_transactions (user_id, amount, type, status, expires_at) VALUES ($1,$2,'cashback','approved', NOW() + ($3 || ' days')::INTERVAL)`,
-            [order.user_id, cashbackAmt, String(expiryDays)]
-          );
-        }
-      } else if (status === 'rejected') {
-        // Cancel each reseller's held escrow — the sale didn't go through.
-        for (const item of itemsRes.rows) {
-          const lineAmt = Number(item.price) * item.qty;
-          await adjustWallet(client, item.reseller_id, 'pending', -lineAmt);
-        }
-        // Refund the customer in full.
-        await adjustWallet(client, order.user_id, 'available', Number(order.total));
-        await client.query(
-          `INSERT INTO wallet_transactions (user_id, amount, type, status) VALUES ($1,$2,'refund','approved')`,
-          [order.user_id, Number(order.total)]
-        );
-      }
-
+      if (status === 'completed') await releaseOrderToResellers(client, order);
+      else await refundOrderToCustomer(client, order);
       await client.query('UPDATE orders SET escrow_settled = true WHERE id = $1', [order.id]);
     }
 
     await client.query('COMMIT');
     await logHistory(newOrder.user_id, 'order_status_' + status, `Order ${newOrder.order_no}`);
     res.json(newOrder);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Resolving an expired/disputed order: Admin has investigated (via the order chat and
+// conversation with both sides) and decided who was telling the truth. The winner gets
+// their money; the loser is banned for fraud. No refund happens to anyone until this runs.
+app.post('/api/admin/orders/:id/resolve', authenticate, requireAdmin, async (req, res) => {
+  const { winner } = req.body; // 'customer' or 'reseller'
+  if (!['customer', 'reseller'].includes(winner)) return res.status(400).json({ error: "Winner must be 'customer' or 'reseller'." });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
+    const order = orderRes.rows[0];
+    if (!order) throw new Error('Order not found.');
+    if (order.status !== 'expired') throw new Error('Only expired/disputed orders can be resolved this way.');
+
+    const resellerRes = await client.query(
+      `SELECT DISTINCT p.reseller_id FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1`,
+      [order.id]
+    );
+    const resellerIds = resellerRes.rows.map(r => r.reseller_id);
+
+    if (winner === 'reseller') {
+      await releaseOrderToResellers(client, order);
+      await client.query(`UPDATE users SET status='banned' WHERE id=$1`, [order.user_id]);
+      await notifyUser(order.user_id, `Order ${order.order_no}: your account has been banned following an investigation.`);
+      for (const rid of resellerIds) await notifyUser(rid, `Order ${order.order_no} was resolved in your favor — funds released.`);
+    } else {
+      await refundOrderToCustomer(client, order);
+      for (const rid of resellerIds) {
+        await client.query(`UPDATE users SET status='banned' WHERE id=$1`, [rid]);
+        await notifyUser(rid, `Order ${order.order_no}: your account has been banned following an investigation.`);
+      }
+      await notifyUser(order.user_id, `Order ${order.order_no} was resolved in your favor — you've been refunded.`);
+    }
+
+    await client.query(`UPDATE orders SET status='solved', resolved_winner=$1, escrow_settled=true WHERE id=$2`, [winner, order.id]);
+    await client.query('COMMIT');
+    await logHistory(order.user_id, 'order_dispute_resolved', `Order ${order.order_no} — winner: ${winner}`);
+    res.json({ ok: true });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(400).json({ error: err.message });
