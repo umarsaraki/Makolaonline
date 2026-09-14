@@ -135,12 +135,32 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
   order_no VARCHAR(50) UNIQUE NOT NULL,
   total NUMERIC(10,2) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'processing'
-    CHECK (status IN ('processing','shipped','completed','rejected')),
+  status VARCHAR(20) NOT NULL DEFAULT 'processing',
   escrow_settled BOOLEAN NOT NULL DEFAULT false,
+  customer_name VARCHAR(150),
+  customer_phone VARCHAR(20),
+  whatsapp_enabled BOOLEAN NOT NULL DEFAULT false,
+  whatsapp_number VARCHAR(20),
+  customer_region VARCHAR(100),
+  customer_address TEXT,
+  reject_reason TEXT,
+  delivery_deadline TIMESTAMP,
+  resolved_winner VARCHAR(20),
   created_at TIMESTAMP DEFAULT NOW()
 );
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS escrow_settled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_name VARCHAR(150);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(20);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS whatsapp_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(20);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_region VARCHAR(100);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_address TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS reject_reason TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_deadline TIMESTAMP;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS resolved_winner VARCHAR(20);
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+ALTER TABLE orders ADD CONSTRAINT orders_status_check
+  CHECK (status IN ('processing','approved','rejected','shipped','completed','expired','solved'));
 
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,
@@ -263,9 +283,12 @@ CREATE TABLE IF NOT EXISTS coupon_redemptions (
 CREATE TABLE IF NOT EXISTS notifications (
   id SERIAL PRIMARY KEY,
   audience VARCHAR(20) NOT NULL CHECK (audience IN ('everyone','resellers','customers')),
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
   message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE notifications ALTER COLUMN audience DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS notification_reads (
   id SERIAL PRIMARY KEY,
@@ -279,6 +302,15 @@ CREATE TABLE IF NOT EXISTS notification_reads (
 CREATE TABLE IF NOT EXISTS settings (
   key VARCHAR(50) PRIMARY KEY,
   value VARCHAR(255) NOT NULL
+);
+
+-- Chat between a customer and reseller about one specific order, once it's approved.
+CREATE TABLE IF NOT EXISTS order_messages (
+  id SERIAL PRIMARY KEY,
+  order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+  sender_id INT REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Uploaded photos (products, banners, KYC documents) live right here in our own
@@ -323,7 +355,7 @@ async function initSchema() {
      ON CONFLICT (key) DO NOTHING`
   );
 
-  console.log('✅ Schema ready (21 tables)');
+  console.log('✅ Schema ready (22 tables)');
 }
 
 async function getSetting(key, fallback) {
