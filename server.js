@@ -12,6 +12,11 @@ const { pool, initSchema, logHistory, getSetting } = require('./db');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
 
 const app = express();
+
+// A single unexpected error should never take the whole site down for every user —
+// log it and keep serving everyone else.
+process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err));
+process.on('uncaughtException', (err) => console.error('Uncaught exception:', err));
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
 
@@ -31,7 +36,7 @@ app.post('/api/upload-image', authenticate, upload.single('image'), async (req, 
     );
     res.json({ url: `/api/images/${rows[0].id}` });
   } catch (err) {
-    res.status(500).json({ error: 'Image upload failed: ' + err.message });
+    res.status(500).json({ error: 'Image upload failed: ' + safeErrorMessage(err) });
   }
 });
 
@@ -54,6 +59,16 @@ function genOrderNo() {
 }
 function genRef(prefix) {
   return `${prefix}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+}
+
+// Never let a raw database/technical error reach the client — only our own short,
+// human-written messages get through. Anything that looks technical (or is
+// suspiciously long) is replaced with a generic, safe message instead.
+function safeErrorMessage(err) {
+  const msg = (err && err.message) || 'Something went wrong. Please try again.';
+  const technical = /relation |column |duplicate key|violates|syntax error|ECONN|null value|at Object|at async|\.js:\d|constraint|permission denied|password authentication|SQLSTATE|too many connections/i;
+  if (technical.test(msg) || msg.length > 180) return 'Something went wrong. Please try again.';
+  return msg;
 }
 async function getWalletBalance(userId, type) {
   const { rows } = await pool.query('SELECT balance FROM wallet WHERE user_id=$1 AND type=$2', [userId, type]);
@@ -397,7 +412,7 @@ app.post('/api/auth/send-otp', authenticate, async (req, res) => {
     if (!r.ok || !data.pinId) throw new Error(data.message || 'Could not send OTP.');
     res.json({ pin_id: data.pinId });
   } catch (err) {
-    res.status(502).json({ error: 'Could not send OTP: ' + err.message });
+    res.status(502).json({ error: 'Could not send OTP: ' + safeErrorMessage(err) });
   }
 });
 
@@ -418,7 +433,7 @@ app.post('/api/auth/verify-otp', authenticate, async (req, res) => {
     const data = await r.json();
     res.json({ verified: data.verified === true || data.verified === 'True' });
   } catch (err) {
-    res.status(502).json({ error: 'Could not verify OTP: ' + err.message });
+    res.status(502).json({ error: 'Could not verify OTP: ' + safeErrorMessage(err) });
   }
 });
 
@@ -559,7 +574,7 @@ app.post('/api/vendor/apply', authenticate, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -635,7 +650,7 @@ app.post('/api/subscription/renew-now', authenticate, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -700,7 +715,7 @@ app.post('/api/reseller/products', authenticate, requireRole('reseller'), async 
       }
     }
   } catch (err) {
-    return res.status(403).json({ error: err.message });
+    return res.status(403).json({ error: safeErrorMessage(err) });
   }
   const { rows } = await pool.query(
     `INSERT INTO products (reseller_id, name, price, image, images, description, category, status)
@@ -731,7 +746,7 @@ app.put('/api/reseller/products/:id', authenticate, requireRole('reseller'), asy
       return res.status(400).json({ error: `Your ${sub.name} plan can't list items above ₵${sub.price_cap}. Upgrade your plan for higher-value items.` });
     }
   } catch (err) {
-    return res.status(403).json({ error: err.message });
+    return res.status(403).json({ error: safeErrorMessage(err) });
   }
   const { rows } = await pool.query(
     `UPDATE products SET name=$1, price=$2, image=COALESCE($3,image), images=COALESCE($4,images), description=$5, category=$6
@@ -796,32 +811,39 @@ app.get('/api/employer/jobs', authenticate, requireRole('employer'), async (req,
 });
 
 app.post('/api/employer/jobs', authenticate, requireRole('employer'), async (req, res) => {
-  const { title, description, salary, location } = req.body;
+  const { title, description, requirements, salary, location, images, min_age, max_age, gender_preference, position } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required.' });
   try {
     await requireActiveSubscription(req.user.id);
   } catch (err) {
-    return res.status(403).json({ error: err.message });
+    return res.status(403).json({ error: safeErrorMessage(err) });
   }
+  const imgArr = Array.isArray(images) ? images.filter(Boolean).slice(0, 5) : [];
   const { rows } = await pool.query(
-    `INSERT INTO jobs (employer_id, title, description, salary, location, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *`,
-    [req.user.id, title, description || null, salary || null, location || null]
+    `INSERT INTO jobs (employer_id, title, position, description, requirements, salary, location, images, min_age, max_age, gender_preference, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'approved') RETURNING *`,
+    [req.user.id, title, position || null, description || null, requirements || null, salary || null, location || null,
+      JSON.stringify(imgArr), min_age || null, max_age || null, gender_preference || null]
   );
   await logHistory(req.user.id, 'job_create', `Added job: ${title}`);
   res.status(201).json(rows[0]);
 });
 
 app.put('/api/employer/jobs/:id', authenticate, requireRole('employer'), async (req, res) => {
-  const { title, description, salary, location } = req.body;
+  const { title, description, requirements, salary, location, images, min_age, max_age, gender_preference, position } = req.body;
   try {
     await requireActiveSubscription(req.user.id);
   } catch (err) {
-    return res.status(403).json({ error: err.message });
+    return res.status(403).json({ error: safeErrorMessage(err) });
   }
+  const imgArr = Array.isArray(images) ? images.filter(Boolean).slice(0, 5) : undefined;
   const { rows } = await pool.query(
-    `UPDATE jobs SET title=$1, description=$2, salary=$3, location=$4
-     WHERE id=$5 AND employer_id=$6 RETURNING *`,
-    [title, description, salary, location, req.params.id, req.user.id]
+    `UPDATE jobs SET title=$1, position=$2, description=$3, requirements=$4, salary=$5, location=$6,
+       images=COALESCE($7,images), min_age=$8, max_age=$9, gender_preference=$10
+     WHERE id=$11 AND employer_id=$12 RETURNING *`,
+    [title, position || null, description, requirements || null, salary, location,
+      imgArr ? JSON.stringify(imgArr) : null, min_age || null, max_age || null, gender_preference || null,
+      req.params.id, req.user.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Job not found.' });
   res.json(rows[0]);
@@ -967,7 +989,7 @@ app.post('/api/orders', authenticate, async (req, res) => {
     res.status(201).json(order);
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message || 'Order failed.' });
+    res.status(400).json({ error: safeErrorMessage(err) || 'Order failed.' });
   } finally {
     client.release();
   }
@@ -1026,7 +1048,7 @@ app.post('/api/orders/:id/mark-delivered', authenticate, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1075,7 +1097,7 @@ app.post('/api/reseller/orders/:id/reject', authenticate, requireRole('reseller'
     res.json({ ok: true });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1172,7 +1194,7 @@ app.post('/api/wallet/cashback/convert', authenticate, async (req, res) => {
     res.json({ moved: bal });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1201,7 +1223,7 @@ app.get('/api/banks', authenticate, async (req, res) => {
     const banks = await flw.listGhanaBanks();
     res.json(banks);
   } catch (err) {
-    res.status(502).json({ error: 'Could not load bank list: ' + err.message });
+    res.status(502).json({ error: 'Could not load bank list: ' + safeErrorMessage(err) });
   }
 });
 
@@ -1222,7 +1244,7 @@ app.post('/api/bank-accounts', authenticate, async (req, res) => {
     await logHistory(req.user.id, 'bank_account_added', `${bank_name} — ${account_number} (${resolved.account_name})`);
     res.status(201).json(rows[0]);
   } catch (err) {
-    res.status(400).json({ error: 'Could not verify that account: ' + err.message });
+    res.status(400).json({ error: 'Could not verify that account: ' + safeErrorMessage(err) });
   }
 });
 
@@ -1251,7 +1273,7 @@ app.post('/api/wallet/deposit/initiate', authenticate, async (req, res) => {
     });
     res.json({ link });
   } catch (err) {
-    res.status(502).json({ error: 'Could not start the deposit: ' + err.message });
+    res.status(502).json({ error: 'Could not start the deposit: ' + safeErrorMessage(err) });
   }
 });
 
@@ -1325,7 +1347,7 @@ app.post('/api/wallet/withdraw', authenticate, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     client.release();
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: safeErrorMessage(err) });
   }
   client.release();
 
@@ -1352,7 +1374,7 @@ app.post('/api/wallet/withdraw', authenticate, async (req, res) => {
     } finally {
       refundClient.release();
     }
-    res.status(502).json({ error: 'Withdrawal could not be sent, your balance has been refunded: ' + err.message });
+    res.status(502).json({ error: 'Withdrawal could not be sent, your balance has been refunded: ' + safeErrorMessage(err) });
   }
 });
 
@@ -1463,6 +1485,14 @@ app.get('/api/support/messages', authenticateAllowBanned, async (req, res) => {
   res.json(rows);
 });
 
+app.get('/api/support/unread-count', authenticateAllowBanned, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*) FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read_by_user=false`,
+    [req.user.id]
+  );
+  res.json({ count: Number(rows[0].count) });
+});
+
 app.post('/api/support/messages', authenticateAllowBanned, async (req, res) => {
   const { message } = req.body;
   if (!message || !message.trim()) return res.status(400).json({ error: 'Message cannot be empty.' });
@@ -1512,7 +1542,7 @@ app.post('/api/admin/vendor-applications/:id/:decision', authenticate, requireAd
     res.json(app_);
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1531,6 +1561,11 @@ app.post('/api/admin/products/:id/:decision', authenticate, requireAdmin, async 
   res.json(rows[0]);
 });
 
+app.delete('/api/admin/products/:id', authenticate, requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM products WHERE id=$1', [req.params.id]);
+  res.json({ deleted: true });
+});
+
 app.get('/api/admin/jobs', authenticate, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
     `SELECT j.*, u.name AS employer_name FROM jobs j JOIN users u ON u.id=j.employer_id ORDER BY j.created_at DESC`
@@ -1542,6 +1577,11 @@ app.post('/api/admin/jobs/:id/:decision', authenticate, requireAdmin, async (req
   const status = req.params.decision === 'approve' ? 'approved' : 'rejected';
   const { rows } = await pool.query('UPDATE jobs SET status=$1 WHERE id=$2 RETURNING *', [status, req.params.id]);
   res.json(rows[0]);
+});
+
+app.delete('/api/admin/jobs/:id', authenticate, requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM jobs WHERE id=$1', [req.params.id]);
+  res.json({ deleted: true });
 });
 
 // Deposits are automatic via Flutterwave now — this just gives Admin visibility into recent activity.
@@ -1608,7 +1648,7 @@ app.put('/api/admin/orders/:id/status', authenticate, requireAdmin, async (req, 
     res.json(newOrder);
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1654,7 +1694,7 @@ app.post('/api/admin/orders/:id/resolve', authenticate, requireAdmin, async (req
     res.json({ ok: true });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1681,6 +1721,35 @@ app.post('/api/admin/users/:id/ban', authenticate, requireAdmin, async (req, res
 app.post('/api/admin/users/:id/unban', authenticate, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`UPDATE users SET status='active' WHERE id=$1 RETURNING id, name, email`, [req.params.id]);
   res.json(rows[0]);
+});
+
+// Removes someone's Reseller/Employer status entirely — not a ban, just undoes their vendor
+// registration (subscription + their listed products/jobs) so they're a plain customer again
+// and can freely re-apply later if they want to.
+app.post('/api/admin/users/:id/delete-vendor-status', authenticate, requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userRes = await client.query('SELECT * FROM users WHERE id=$1 FOR UPDATE', [req.params.id]);
+    const user = userRes.rows[0];
+    if (!user) throw new Error('User not found.');
+    if (!['reseller', 'employer'].includes(user.role)) throw new Error('This user is not currently a reseller or employer.');
+
+    if (user.role === 'reseller') await client.query('DELETE FROM products WHERE reseller_id=$1', [user.id]);
+    else await client.query('DELETE FROM jobs WHERE employer_id=$1', [user.id]);
+    await client.query('DELETE FROM subscriptions WHERE user_id=$1', [user.id]);
+    await client.query(`UPDATE users SET role='customer' WHERE id=$1`, [user.id]);
+
+    await client.query('COMMIT');
+    await notifyUser(user.id, 'Your vendor status was removed by Admin. You can re-apply any time from MKO-VENDOR.');
+    await logHistory(user.id, 'vendor_status_removed', `Removed ${user.role} status and listings by Admin`);
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: safeErrorMessage(err) });
+  } finally {
+    client.release();
+  }
 });
 
 // Admin resets anyone's forgotten withdrawal security code — confirm their identity yourself first.
@@ -1757,7 +1826,7 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
     res.status(201).json({ user, temp_password: tempPassword });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: safeErrorMessage(err) });
   } finally {
     client.release();
   }
@@ -1786,7 +1855,7 @@ app.post('/api/admin/coupons', authenticate, requireAdmin, async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (err) {
-    res.status(400).json({ error: err.message.includes('duplicate') ? 'That coupon code is already in use.' : err.message });
+    res.status(400).json({ error: safeErrorMessage(err).includes('duplicate') ? 'That coupon code is already in use.' : err.message });
   }
 });
 
@@ -1882,7 +1951,6 @@ app.post('/api/admin/support/messages/:userId', authenticate, requireAdmin, asyn
     `INSERT INTO support_messages (user_id, sender_role, message) VALUES ($1,'admin',$2) RETURNING *`,
     [req.params.userId, message.trim()]
   );
-  await notifyUser(req.params.userId, 'Admin replied in the Message Center.');
   res.status(201).json(rows[0]);
 });
 
@@ -1921,6 +1989,13 @@ app.get('/api/admin/history', authenticate, requireAdmin, async (req, res) => {
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found.' });
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Catches anything that slips through — never send a stack trace or raw error to the client.
+app.use((err, req, res, next) => {
+  console.error('Unhandled route error:', err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
 /* ------------------------------------------------------------------ */
