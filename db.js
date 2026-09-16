@@ -122,13 +122,25 @@ CREATE TABLE IF NOT EXISTS jobs (
   id SERIAL PRIMARY KEY,
   employer_id INT REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(150) NOT NULL,
+  position VARCHAR(100),
   description TEXT,
+  requirements TEXT,
   salary VARCHAR(100),
   location VARCHAR(150),
+  images JSONB NOT NULL DEFAULT '[]',
+  min_age INT,
+  max_age INT,
+  gender_preference VARCHAR(20),
   status VARCHAR(20) NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending','approved','rejected')),
   created_at TIMESTAMP DEFAULT NOW()
 );
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS requirements TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS position VARCHAR(100);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS min_age INT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS max_age INT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS gender_preference VARCHAR(20);
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
