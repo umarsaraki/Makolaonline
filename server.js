@@ -475,7 +475,7 @@ app.get('/api/products', async (req, res) => {
   const params = [];
   if (search) { params.push(`%${search}%`); q += ` AND p.name ILIKE $${params.length}`; }
   if (category) { params.push(category); q += ` AND p.category = $${params.length}`; }
-  q += ' ORDER BY p.created_at DESC';
+  q += ' ORDER BY RANDOM()';
   const { rows } = await pool.query(q, params);
   res.json(rows);
 });
