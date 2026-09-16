@@ -380,6 +380,28 @@ app.post('/api/auth/login', async (req, res) => {
 
 const OTP_BYPASS = process.env.OTP_BYPASS === 'true';
 
+// Sends a WhatsApp message via Termii. Never throws — a failed/unset WhatsApp
+// notification should never break the order/application flow itself.
+async function sendWhatsApp(number, text) {
+  if (!number || !process.env.TERMII_API_KEY) return;
+  try {
+    await fetch('https://api.ng.termii.com/api/sms/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: process.env.TERMII_API_KEY,
+        to: number,
+        from: process.env.TERMII_SENDER_ID || 'N-Alert',
+        sms: text,
+        type: 'plain',
+        channel: 'whatsapp',
+      }),
+    });
+  } catch (err) {
+    console.error('WhatsApp send failed:', err.message);
+  }
+}
+
 app.post('/api/auth/send-otp', authenticate, async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Enter a phone number first.' });
@@ -479,6 +501,37 @@ app.get('/api/jobs', async (req, res) => {
   res.json(rows);
 });
 
+app.post('/api/jobs/:id/apply', authenticate, async (req, res) => {
+  const { message } = req.body;
+  const jobRes = await pool.query(`SELECT j.*, u.name AS employer_name FROM jobs j JOIN users u ON u.id=j.employer_id WHERE j.id=$1 AND j.status='approved'`, [req.params.id]);
+  const job = jobRes.rows[0];
+  if (!job) return res.status(404).json({ error: 'Job not found.' });
+  try {
+    await pool.query(
+      `INSERT INTO job_applications (job_id, applicant_id, message) VALUES ($1,$2,$3)`,
+      [req.params.id, req.user.id, message || null]
+    );
+  } catch (err) {
+    return res.status(409).json({ error: 'You have already applied to this job.' });
+  }
+  await notifyUser(job.employer_id, `${req.user.name} applied for "${job.title}".`);
+  const emp = await pool.query('SELECT whatsapp_number FROM users WHERE id=$1', [job.employer_id]);
+  if (emp.rows[0]) await sendWhatsApp(emp.rows[0].whatsapp_number, `MakolaOnline: ${req.user.name} just applied for "${job.title}". Open the app to view their details.`);
+  await logHistory(req.user.id, 'job_application', `Applied for "${job.title}"`);
+  res.status(201).json({ ok: true });
+});
+
+app.get('/api/employer/jobs/:id/applications', authenticate, requireRole('employer'), async (req, res) => {
+  const jobRes = await pool.query('SELECT id FROM jobs WHERE id=$1 AND employer_id=$2', [req.params.id, req.user.id]);
+  if (!jobRes.rows[0]) return res.status(404).json({ error: 'Job not found.' });
+  const { rows } = await pool.query(
+    `SELECT ja.*, u.name, u.email, u.phone, u.whatsapp_number FROM job_applications ja
+     JOIN users u ON u.id = ja.applicant_id WHERE ja.job_id=$1 ORDER BY ja.created_at DESC`,
+    [req.params.id]
+  );
+  res.json(rows);
+});
+
 /* ------------------------------------------------------------------ */
 /* MKO-VENDOR — apply as reseller/employer                            */
 /* ------------------------------------------------------------------ */
@@ -495,7 +548,7 @@ app.get('/api/plans', async (req, res) => {
 app.post('/api/vendor/apply', authenticate, async (req, res) => {
   const {
     type, plan_code, coupon_code,
-    full_name, phone, phone_verified, full_address,
+    full_name, phone, whatsapp_number, full_address,
     id_type, id_number, id_front_url, id_back_url, selfie_url, payout_number,
     business_name, business_category, business_address, business_region,
     company_name, position, company_address,
@@ -544,14 +597,15 @@ app.post('/api/vendor/apply', authenticate, async (req, res) => {
       `UPDATE users SET
          name = COALESCE($1, name),
          phone = COALESCE($2, phone),
-         business_name = $3,
-         business_category = $4,
-         business_address = $5,
-         business_region = $6,
-         position = $7
-       WHERE id = $8`,
+         whatsapp_number = COALESCE($3, whatsapp_number),
+         business_name = $4,
+         business_category = $5,
+         business_address = $6,
+         business_region = $7,
+         position = $8
+       WHERE id = $9`,
       [
-        full_name || null, phone || null,
+        full_name || null, phone || null, whatsapp_number || null,
         type === 'employer' ? (company_name || null) : (business_name || null),
         business_category || null,
         type === 'employer' ? (company_address || null) : (business_address || null),
@@ -563,10 +617,10 @@ app.post('/api/vendor/apply', authenticate, async (req, res) => {
 
     const { rows } = await client.query(
       `INSERT INTO vendor_applications
-         (user_id, type, plan_id, price_paid, full_address, phone_verified,
+         (user_id, type, plan_id, price_paid, full_address,
           id_type, id_number, id_front_url, id_back_url, selfie_url, payout_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [req.user.id, type, plan.id, price, full_address || null, !!phone_verified,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [req.user.id, type, plan.id, price, full_address || null,
         id_type || null, id_number || null, id_front_url || null, id_back_url || null, selfie_url || null, payout_number || null]
     );
     await client.query('COMMIT');
@@ -984,6 +1038,8 @@ app.post('/api/orders', authenticate, async (req, res) => {
     await client.query('COMMIT');
     for (const rid of resellerIds) {
       await notifyUser(rid, `New order ${orderNo} — review it and approve or decline.`);
+      const r = await pool.query('SELECT whatsapp_number FROM users WHERE id=$1', [rid]);
+      if (r.rows[0]) await sendWhatsApp(r.rows[0].whatsapp_number, `MakolaOnline: New order ${orderNo} needs your review. Open the app to approve or decline it.`);
     }
     await logHistory(req.user.id, 'order_placed', `Order ${orderNo} - ₵${total}`);
     res.status(201).json(order);
@@ -1780,7 +1836,7 @@ app.get('/api/admin/users/lookup', authenticate, requireAdmin, async (req, res) 
 // Admin creates a fully-verified reseller/employer directly — no self-serve KYC.
 app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req, res) => {
   const {
-    name, phone, ghana_card, email, business_name, business_category, business_address, business_region,
+    name, phone, whatsapp_number, ghana_card, email, business_name, business_category, business_address, business_region,
     bank_code, bank_name, account_number, plan_code, type,
   } = req.body;
   if (!['reseller', 'employer'].includes(type)) return res.status(400).json({ error: 'Choose reseller or employer.' });
@@ -1800,9 +1856,9 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
     const tempPassword = crypto.randomBytes(5).toString('hex');
     const hash = await bcrypt.hash(tempPassword, 10);
     const userRes = await client.query(
-      `INSERT INTO users (name, email, phone, password_hash, role, ghana_card, business_name, business_category, business_address, business_region, added_by_admin)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true) RETURNING id, name, email`,
-      [name, email.toLowerCase(), phone || null, hash, type, ghana_card || null, business_name || null, business_category || null, business_address || null, business_region || null]
+      `INSERT INTO users (name, email, phone, whatsapp_number, password_hash, role, ghana_card, business_name, business_category, business_address, business_region, added_by_admin)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true) RETURNING id, name, email`,
+      [name, email.toLowerCase(), phone || null, whatsapp_number || phone || null, hash, type, ghana_card || null, business_name || null, business_category || null, business_address || null, business_region || null]
     );
     const user = userRes.rows[0];
     await client.query(`INSERT INTO wallet (user_id, balance, type) VALUES ($1,0,'available'),($1,0,'cashback'),($1,0,'pending')`, [user.id]);
