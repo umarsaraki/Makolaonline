@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS users (
   business_category VARCHAR(150),
   business_address VARCHAR(255),
   business_region VARCHAR(100),
+  position VARCHAR(100),
+  whatsapp_number VARCHAR(20),
   added_by_admin BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -51,6 +53,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS business_address VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS business_region VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS added_by_admin BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS position VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(20);
 
 -- Subscription plans for Resellers and the single Employer plan (must exist before
 -- vendor_applications, which references plan_id).
@@ -325,6 +328,16 @@ CREATE TABLE IF NOT EXISTS order_messages (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- A job seeker expressing interest in a posted job — the employer is notified (incl. WhatsApp).
+CREATE TABLE IF NOT EXISTS job_applications (
+  id SERIAL PRIMARY KEY,
+  job_id INT REFERENCES jobs(id) ON DELETE CASCADE,
+  applicant_id INT REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(job_id, applicant_id)
+);
+
 -- Message Center: one running thread per user with Admin. Used when the Help Center bot
 -- can't answer a question, and it's the ONLY thing a banned account can still use.
 CREATE TABLE IF NOT EXISTS support_messages (
@@ -379,7 +392,7 @@ async function initSchema() {
      ON CONFLICT (key) DO NOTHING`
   );
 
-  console.log('✅ Schema ready (23 tables)');
+  console.log('✅ Schema ready (24 tables)');
 }
 
 async function getSetting(key, fallback) {
