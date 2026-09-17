@@ -1837,7 +1837,7 @@ app.get('/api/admin/users/lookup', authenticate, requireAdmin, async (req, res) 
 app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req, res) => {
   const {
     name, phone, whatsapp_number, ghana_card, email, business_name, business_category, business_address, business_region,
-    bank_code, bank_name, account_number, plan_code, type,
+    position, bank_code, bank_name, account_number, plan_code, type,
   } = req.body;
   if (!['reseller', 'employer'].includes(type)) return res.status(400).json({ error: 'Choose reseller or employer.' });
   if (!name || !email) return res.status(400).json({ error: 'Full name and email are required.' });
@@ -1856,9 +1856,9 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
     const tempPassword = crypto.randomBytes(5).toString('hex');
     const hash = await bcrypt.hash(tempPassword, 10);
     const userRes = await client.query(
-      `INSERT INTO users (name, email, phone, whatsapp_number, password_hash, role, ghana_card, business_name, business_category, business_address, business_region, added_by_admin)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true) RETURNING id, name, email`,
-      [name, email.toLowerCase(), phone || null, whatsapp_number || phone || null, hash, type, ghana_card || null, business_name || null, business_category || null, business_address || null, business_region || null]
+      `INSERT INTO users (name, email, phone, whatsapp_number, password_hash, role, ghana_card, business_name, business_category, business_address, business_region, position, added_by_admin)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true) RETURNING id, name, email`,
+      [name, email.toLowerCase(), phone || null, whatsapp_number || phone || null, hash, type, ghana_card || null, business_name || null, business_category || null, business_address || null, business_region || null, position || null]
     );
     const user = userRes.rows[0];
     await client.query(`INSERT INTO wallet (user_id, balance, type) VALUES ($1,0,'available'),($1,0,'cashback'),($1,0,'pending')`, [user.id]);
