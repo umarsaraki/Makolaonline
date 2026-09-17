@@ -1,0 +1,2348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MakolaOnline.com — Buy, Sell &amp; Work in Ghana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --yellow:#FCD116;
+  --green:#006B3F;
+  --green-dark:#00502F;
+  --red:#CE1126;
+  --white:#FFFFFF;
+  --ink:#1A1A1A;
+  --ink-soft:#5B5B5B;
+  --bg:#FAFAF8;
+  --surface:#FFFFFF;
+  --surface-2:#F1EFE7;
+  --line:#E6E3DA;
+  --radius:6px;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);padding-bottom:70px;}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;margin:0;font-weight:600;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+img{max-width:100%;display:block;}
+
+/* ---------- Header ---------- */
+header.topbar{background:var(--green);border-bottom:4px solid var(--yellow);position:sticky;top:0;z-index:50;}
+.topbar-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;}
+.logo{color:var(--white);font-size:22px;font-weight:700;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;}
+.logo .dot{width:10px;height:10px;background:var(--yellow);border-radius:50%;}
+.cart-btn{position:relative;background:var(--yellow);color:var(--green-dark);border:none;padding:8px 14px;border-radius:var(--radius);font-weight:700;font-size:14px;}
+.cart-badge{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:11px;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;}
+
+/* ---------- Bottom Navigation ---------- */
+nav.bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--green);border-top:3px solid var(--yellow);
+  display:flex;justify-content:space-around;padding:6px 4px 8px;}
+nav.bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:rgba(255,255,255,.75);
+  font-size:11px;font-weight:600;padding:4px 2px;border-radius:8px;min-width:0;}
+nav.bottomnav a .ic{font-size:19px;line-height:1;}
+nav.bottomnav a.active{color:var(--yellow);}
+
+/* ---------- Layout ---------- */
+main{max-width:1180px;margin:0 auto;padding:28px 20px 24px;min-height:60vh;}
+.section-title{font-size:22px;margin-bottom:14px;}
+.muted{color:var(--ink-soft);font-size:14px;}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-block;border:none;padding:11px 20px;border-radius:var(--radius);font-weight:700;font-size:14px;}
+.btn-primary{background:var(--yellow);color:var(--green-dark);}
+.btn-primary:hover{background:#ecc300;}
+.btn-outline{background:transparent;border:2px solid var(--green);color:var(--green);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:4px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ---------- Banner slider ---------- */
+.banner{position:relative;border-radius:10px;overflow:hidden;height:220px;background:linear-gradient(120deg,var(--green),var(--green-dark));margin-bottom:26px;}
+.banner img{width:100%;height:100%;object-fit:cover;}
+.banner-dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:6px;}
+.banner-dots span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5);}
+.banner-dots span.on{background:var(--yellow);}
+.banner-empty{color:#fff;display:flex;align-items:center;justify-content:center;height:100%;font-family:'Space Grotesk';font-size:20px;}
+
+/* ---------- Search (wraps on narrow screens instead of overflowing) ---------- */
+.searchbar{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+.searchbar input{flex:2 1 160px;min-width:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);font-size:14px;background:var(--surface);color:var(--ink);}
+.searchbar select{flex:1 1 130px;min-width:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);font-size:14px;background:var(--surface);color:var(--ink);}
+.searchbar button{flex:1 1 100px;}
+
+/* ---------- Grid / Cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media(min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}}
+.card{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--green);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;}
+.card .thumb{height:140px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:34px;}
+.card .thumb img{width:100%;height:100%;object-fit:cover;}
+.card .body{padding:12px;flex:1;display:flex;flex-direction:column;gap:6px;}
+.card h4{font-size:15px;color:var(--ink);}
+.price{color:var(--green);font-weight:700;font-family:'Space Grotesk';font-size:16px;}
+.card .body .muted{font-size:12px;}
+.card .row{display:flex;justify-content:space-between;align-items:center;margin-top:auto;gap:8px;}
+
+.job-card{border-top:4px solid var(--red);}
+.job-card .salary{color:var(--red);font-weight:700;}
+
+/* ---------- Forms ---------- */
+.form-box{max-width:420px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:26px;}
+.form-box h2{margin-bottom:4px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--ink);}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--ink);}
+.field textarea{resize:vertical;min-height:70px;}
+.error-box{background:#FDEBEC;color:var(--red);padding:10px 12px;border-radius:var(--radius);font-size:13px;margin-bottom:12px;}
+.ok-box{background:#E8F5EE;color:var(--green-dark);padding:10px 12px;border-radius:var(--radius);font-size:13px;margin-bottom:12px;}
+.switch-link{text-align:center;margin-top:14px;font-size:13px;}
+
+/* ---------- Profile: header card + menu list ---------- */
+.profile-header{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--green);border-radius:10px;padding:18px;margin-bottom:18px;}
+.avatar-circle{width:52px;height:52px;border-radius:50%;background:var(--yellow);color:var(--green-dark);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk';flex-shrink:0;}
+.profile-header .pname{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.profile-header .pemail{color:var(--ink-soft);font-size:13px;margin-top:2px;}
+.menu-list{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.menu-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);}
+.menu-item:last-child{border-bottom:none;}
+.menu-item:active{background:var(--surface-2);}
+.menu-item .mi-icon{font-size:20px;width:24px;text-align:center;flex-shrink:0;}
+.menu-item .mi-label{flex:1;font-size:14px;font-weight:600;}
+.menu-item .mi-chevron{color:var(--ink-soft);font-size:16px;}
+.back-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+
+/* ---------- Tabs (Admin) ---------- */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:20px;}
+.tabs button{background:none;border:none;padding:10px 14px;font-size:13px;font-weight:600;color:var(--ink-soft);border-bottom:3px solid transparent;}
+.tabs button.active{color:var(--green);border-color:var(--green);}
+
+/* ---------- Table ---------- */
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;font-size:13px;}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink);}
+th{background:var(--surface-2);font-family:'Space Grotesk';font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);}
+tr:last-child td{border-bottom:none;}
+
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge.pending{background:#FFF3CD;color:#8a6d00;}
+.badge.approved,.badge.completed,.badge.active,.badge.solved{background:#E8F5EE;color:var(--green-dark);}
+.badge.rejected,.badge.banned,.badge.expired{background:#FDEBEC;color:var(--red);}
+.badge.processing{background:#E7F0FF;color:#1d4ed8;}
+.badge.shipped{background:#EFE7FF;color:#6d28d9;}
+
+.wallet-row{display:flex;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+.wallet-card{flex:1;min-width:200px;background:var(--green);color:#fff;border-radius:10px;padding:20px;}
+.wallet-card.cashback{background:var(--yellow);color:var(--green-dark);}
+.wallet-card .amt{font-family:'Space Grotesk';font-size:26px;margin-top:6px;}
+
+.empty{text-align:center;padding:50px 10px;color:var(--ink-soft);}
+
+/* ---------- Modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
+.modal{background:var(--surface);border-radius:10px;max-width:460px;width:100%;max-height:86vh;overflow:auto;padding:22px;}
+.modal h3{margin-bottom:14px;}
+.close-x{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:var(--ink-soft);}
+
+/* ---------- Help chat widget ---------- */
+.chat-bubble{position:fixed;bottom:78px;right:16px;background:var(--green);color:#fff;width:52px;height:52px;border-radius:50%;border:none;font-size:22px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:80;}
+.chat-window{position:fixed;bottom:138px;right:16px;width:280px;max-height:400px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);display:none;flex-direction:column;z-index:80;}
+.chat-window.open{display:flex;}
+.chat-head{background:var(--green);color:#fff;padding:12px 14px;border-radius:10px 10px 0 0;font-weight:700;font-size:14px;}
+.chat-body{flex:1;overflow:auto;padding:12px;font-size:13px;display:flex;flex-direction:column;gap:8px;}
+.chat-msg{padding:8px 10px;border-radius:8px;max-width:85%;}
+.chat-msg.bot{background:var(--surface-2);color:var(--ink);align-self:flex-start;}
+.chat-msg.me{background:var(--yellow);color:var(--green-dark);align-self:flex-end;}
+.chat-foot{display:flex;border-top:1px solid var(--line);}
+.chat-foot input{flex:1;border:none;padding:10px;font-size:13px;background:var(--surface);color:var(--ink);}
+.chat-foot button{background:var(--green);color:#fff;border:none;padding:0 14px;font-weight:700;}
+
+footer.sitefoot{text-align:center;padding:24px;color:var(--ink-soft);font-size:12px;border-top:1px solid var(--line);}
+footer.sitefoot a{color:var(--green);font-weight:600;}
+
+.bell-dropdown{position:absolute;top:44px;right:0;width:280px;max-height:340px;overflow:auto;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:90;}
+.bell-item{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;}
+.bell-item:last-child{border-bottom:none;}
+.bell-item.unread{background:#FFF8E1;}
+.bell-item .bt{color:var(--ink-soft);font-size:11px;margin-top:3px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="logo"><span class="dot"></span>MakolaOnline</div>
+    <div style="display:flex;align-items:center;gap:8px;position:relative">
+      <button class="cart-btn" id="msgBtn" style="background:transparent;color:#fff;font-size:18px;padding:8px">✉️<span class="cart-badge" id="msgBadge" style="display:none">0</span></button>
+      <button class="cart-btn" id="bellBtn" style="background:transparent;color:#fff;font-size:18px;padding:8px">🔔<span class="cart-badge" id="bellBadge" style="display:none">0</span></button>
+      <div id="bellDropdown"></div>
+      <button class="cart-btn" id="cartBtn">Cart <span id="cartCount">0</span></button>
+    </div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<footer class="sitefoot">
+  &copy; 2026 MakolaOnline.com — Ghana's Marketplace
+</footer>
+
+<button class="chat-bubble" id="chatBubble">&#128172;</button>
+<div class="chat-window" id="chatWindow">
+  <div class="chat-head">MakolaOnline Help</div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chat-foot">
+    <input id="chatInput" placeholder="Type your question...">
+    <button id="chatSend">Send</button>
+  </div>
+</div>
+
+<nav class="bottomnav" id="bottomNav"></nav>
+
+<script>
+/* ============================================================
+   MakolaOnline.com — single-file SPA frontend
+   Talks to the Express/PostgreSQL API defined in server.js
+   ============================================================ */
+
+const state = {
+  token: localStorage.getItem('mko_token') || null,
+  user: null,
+  page: 'home',
+  depositFlash: null,
+  cart: JSON.parse(localStorage.getItem('mko_cart') || '[]'),
+};
+
+function parseHash() {
+  const raw = location.hash.replace('#', '') || 'home';
+  const [page, queryStr] = raw.split('?');
+  return { page: page || 'home', params: new URLSearchParams(queryStr || '') };
+}
+const initial = parseHash();
+state.page = initial.page;
+if (initial.params.get('deposit')) state.depositFlash = initial.params.get('deposit');
+
+/* ---------------- API helper ---------------- */
+function safeMsg(text) {
+  const msg = typeof text === 'string' ? text : '';
+  const technical = /relation |column |duplicate key|violates|syntax error|ECONN|null value|at Object|at async|\.js:\d|constraint|stack|undefined is not|Cannot read prop/i;
+  if (!msg || technical.test(msg) || msg.length > 180) return 'Something went wrong. Please try again.';
+  return msg;
+}
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (state.token) headers.Authorization = 'Bearer ' + state.token;
+  let res;
+  try {
+    res = await fetch(path, { ...opts, headers });
+  } catch (networkErr) {
+    throw new Error('Connection problem — please check your internet and try again.');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(safeMsg(data.error));
+  return data;
+}
+
+// Uploads a picked photo and returns its hosted URL. Deliberately does NOT go through api()
+// because FormData needs the browser to set its own multipart Content-Type boundary.
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  let res;
+  try {
+    res = await fetch('/api/upload-image', {
+      method: 'POST',
+      headers: state.token ? { Authorization: 'Bearer ' + state.token } : {},
+      body: formData,
+    });
+  } catch (networkErr) {
+    throw new Error('Connection problem — please check your internet and try again.');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(safeMsg(data.error) || 'Photo upload failed.');
+  return data.url;
+}
+
+function saveCart() { localStorage.setItem('mko_cart', JSON.stringify(state.cart)); renderCartCount(); }
+function renderCartCount() { document.getElementById('cartCount').textContent = state.cart.reduce((s, i) => s + i.qty, 0); }
+
+function money(n) { return '₵' + Number(n || 0).toFixed(2); }
+
+function go(page) { location.hash = page; }
+
+window.addEventListener('hashchange', () => {
+  const { page, params } = parseHash();
+  state.page = page;
+  if (params.get('deposit')) state.depositFlash = params.get('deposit');
+  render();
+});
+
+/* ---------------- Nav (bottom bar) ---------------- */
+function renderNav() {
+  const items = [
+    ['home', '🏠', 'HOME'], ['services', '💼', 'SERVICES'], ['vendor', '🏪', 'VENDOR'],
+    ['orders', '📦', 'ORDER'], ['profile', '👤', 'PROFILE'],
+  ];
+  // Admin Panel now lives inside the Profile menu, not the bottom bar.
+  const nav = document.getElementById('bottomNav');
+  nav.innerHTML = items.map(([id, icon, label]) =>
+    `<a href="#${id}" class="${state.page === id ? 'active' : ''}"><span class="ic">${icon}</span>${label}</a>`
+  ).join('');
+}
+
+function logout() {
+  state.token = null; state.user = null;
+  localStorage.removeItem('mko_token');
+  go('home');
+}
+
+/* ---------------- Root render ---------------- */
+async function loadUser() {
+  if (!state.token) { state.user = null; return; }
+  try { state.user = await api('/api/profile'); }
+  catch { state.token = null; localStorage.removeItem('mko_token'); state.user = null; }
+}
+
+async function render() {
+  renderNav();
+  renderCartCount();
+  refreshBell();
+  refreshMsgBadge();
+  const app = document.getElementById('app');
+  app.innerHTML = '<p class="muted">Loading...</p>';
+
+  const authPages = ['vendor', 'orders', 'profile', 'admin'];
+  if (authPages.includes(state.page) && !state.user) { go('login'); return; }
+
+  if (state.user && state.user.status === 'banned') { await renderBannedView(app); return; }
+
+  if (state.page === 'profile' && state.depositFlash) profileTab = 'wallet';
+
+  try {
+    switch (state.page) {
+      case 'home': await renderHome(app); break;
+      case 'services': await renderServices(app); break;
+      case 'vendor': await renderVendor(app); break;
+      case 'orders': await renderOrders(app); break;
+      case 'profile': await renderProfile(app); break;
+      case 'admin': await renderAdmin(app); break;
+      case 'login': renderLogin(app); break;
+      case 'register': renderRegister(app); break;
+      case 'privacy': renderPrivacy(app); break;
+      case 'help': renderHelp(app); break;
+      default: await renderHome(app); break;
+    }
+    if (state.depositFlash) {
+      const banner = document.createElement('div');
+      banner.className = state.depositFlash === 'success' ? 'ok-box' : 'error-box';
+      banner.textContent = state.depositFlash === 'success'
+        ? 'Deposit successful — your Available Balance has been updated.'
+        : 'Deposit was not completed.';
+      app.prepend(banner);
+      state.depositFlash = null;
+    }
+  } catch (err) {
+    app.innerHTML = `<div class="error-box">${err.message}<br><span class="muted">Make sure the Node.js server (npm run dev) is running, and that you're opening the site via http://localhost:5000 — not by opening the file directly.</span></div>`;
+  }
+}
+
+/* ================= HOME ================= */
+async function renderHome(app) {
+  const [banners, products] = await Promise.all([
+    api('/api/banners').catch(() => []),
+    api('/api/products'),
+  ]);
+
+  app.innerHTML = `
+    <div class="banner" id="bannerBox">
+      ${banners.length ? banners.map((b, i) => `
+        <a href="${b.link || '#'}" style="display:${i === 0 ? 'block' : 'none'};height:100%">
+          <img src="${b.image_url}" alt="banner">
+        </a>`).join('') : `<div class="banner-empty">Welcome to MakolaOnline — Buy &amp; Sell across Ghana 🇬🇭</div>`}
+      ${banners.length > 1 ? `<div class="banner-dots">${banners.map((_, i) => `<span class="${i === 0 ? 'on' : ''}"></span>`).join('')}</div>` : ''}
+    </div>
+    <div class="searchbar">
+      <input id="searchInput" placeholder="Search products e.g. rice, shoes, phone...">
+      <select id="categorySelect">
+        <option value="">All Categories</option>
+        <option>Electronics</option><option>Fashion</option><option>Food &amp; Groceries</option>
+        <option>Beauty</option><option>Home &amp; Living</option><option>Other</option>
+      </select>
+      <button class="btn btn-primary" id="searchBtn">Search</button>
+    </div>
+    <h2 class="section-title">Products on MakolaOnline</h2>
+    <div class="grid" id="productGrid"></div>
+  `;
+
+  if (banners.length > 1) {
+    let idx = 0;
+    setInterval(() => {
+      const slides = document.querySelectorAll('#bannerBox a');
+      const dots = document.querySelectorAll('.banner-dots span');
+      if (!slides.length) return;
+      slides[idx].style.display = 'none'; dots[idx].classList.remove('on');
+      idx = (idx + 1) % slides.length;
+      slides[idx].style.display = 'block'; dots[idx].classList.add('on');
+    }, 4000);
+  }
+
+  fillProductGrid(products);
+
+  document.getElementById('searchBtn').onclick = async () => {
+    const search = document.getElementById('searchInput').value;
+    const category = document.getElementById('categorySelect').value;
+    const q = new URLSearchParams({ ...(search && { search }), ...(category && { category }) });
+    fillProductGrid(await api('/api/products?' + q.toString()));
+  };
+}
+
+function fillProductGrid(products) {
+  const grid = document.getElementById('productGrid');
+  if (!products.length) { grid.innerHTML = `<div class="empty">No products available right now. Check back once some are approved.</div>`; return; }
+  grid.innerHTML = products.map(p => {
+    const imgs = (p.images && p.images.length) ? p.images : (p.image ? [p.image] : []);
+    return `
+    <div class="card" style="cursor:pointer" onclick='openProductDetail(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+      <div class="thumb">${imgs.length ? `<img src="${imgs[0]}" alt="${p.name}">` : '🛍️'}</div>
+      <div class="body">
+        <h4>${p.name}</h4>
+        <div class="muted">${p.category || 'General'} · by ${p.reseller_name}</div>
+        <div class="price">${money(p.price)}</div>
+        <div class="row">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();addToCart(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price})">Add to Cart</button>
+        </div>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function openProductDetail(p) {
+  const imgs = (p.images && p.images.length) ? p.images : (p.image ? [p.image] : []);
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      ${imgs.length ? `<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">${imgs.map(u => `<img src="${u}" style="height:110px;border-radius:8px;cursor:zoom-in" onclick='event.stopPropagation();openImageLightbox(${JSON.stringify(imgs)})'>`).join('')}</div>` : `<div class="thumb" style="height:140px">🛍️</div>`}
+      <h3>${p.name}</h3>
+      <p class="muted">Product #${p.id} · ${p.category || 'General'} · by ${p.reseller_name}</p>
+      <p class="price" style="margin:8px 0">${money(p.price)}</p>
+      ${p.description ? `<p><strong>Description:</strong> ${p.description}</p>` : '<p class="muted">No description provided.</p>'}
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" style="flex:1" onclick="addToCart(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price}); this.closest('.overlay').remove();">Add to Cart</button>
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.overlay').remove()">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function openImageLightbox(urls, startIdx = 0) {
+  document.querySelector('.lightbox-overlay')?.remove();
+  let idx = startIdx;
+  let zoomed = false;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay lightbox-overlay';
+  overlay.style.userSelect = 'none';
+
+  const frame = document.createElement('div');
+  frame.style.cssText = 'position:relative;max-width:100%;text-align:center;';
+
+  const img = document.createElement('img');
+  img.style.cssText = 'max-width:100%;max-height:80vh;border-radius:10px;transition:transform .2s;cursor:zoom-in;';
+  img.ondblclick = (e) => {
+    e.stopPropagation();
+    zoomed = !zoomed;
+    img.style.transform = zoomed ? 'scale(2.2)' : 'scale(1)';
+    img.style.cursor = zoomed ? 'zoom-out' : 'zoom-in';
+  };
+  frame.appendChild(img);
+
+  function renderFrame() {
+    img.src = urls[idx];
+    zoomed = false;
+    img.style.transform = 'scale(1)';
+    img.style.cursor = 'zoom-in';
+  }
+  renderFrame();
+
+  if (urls.length > 1) {
+    const counter = document.createElement('div');
+    counter.style.cssText = 'margin-top:10px;color:#fff;';
+    frame.appendChild(counter);
+    function updateCounter() { counter.textContent = (idx + 1) + ' / ' + urls.length; }
+    updateCounter();
+
+    const mkArrow = (symbol, dir) => {
+      const btn = document.createElement('button');
+      btn.textContent = symbol;
+      btn.style.cssText = `position:absolute;${dir === 'prev' ? 'left' : 'right'}:10px;top:45%;transform:translateY(-50%);background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;z-index:5;`;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        idx = dir === 'prev' ? (idx - 1 + urls.length) % urls.length : (idx + 1) % urls.length;
+        renderFrame();
+        updateCounter();
+      };
+      return btn;
+    };
+    frame.appendChild(mkArrow('‹', 'prev'));
+    frame.appendChild(mkArrow('›', 'next'));
+  }
+
+  const hint = document.createElement('div');
+  hint.textContent = 'Double-tap photo to zoom';
+  hint.style.cssText = 'margin-top:6px;color:rgba(255,255,255,.7);font-size:12px;';
+  frame.appendChild(hint);
+
+  overlay.appendChild(frame);
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+function addToCart(id, name, price) {
+  const existing = state.cart.find(i => i.product_id === id);
+  if (existing) existing.qty += 1;
+  else state.cart.push({ product_id: id, name, price, qty: 1 });
+  saveCart();
+}
+
+/* ================= SERVICES (Jobs) ================= */
+async function renderServices(app) {
+  const jobs = await api('/api/jobs');
+  app.innerHTML = `
+    <h2 class="section-title">Jobs on MakolaOnline</h2>
+    <div class="grid" id="jobGrid"></div>
+  `;
+  const grid = document.getElementById('jobGrid');
+  if (!jobs.length) { grid.innerHTML = `<div class="empty">No jobs available right now.</div>`; return; }
+  grid.innerHTML = jobs.map(j => {
+    const imgs = j.images && j.images.length ? j.images : [];
+    return `
+    <div class="card job-card" style="cursor:pointer" onclick='openJobDetail(${JSON.stringify(j).replace(/'/g, "&apos;")})'>
+      ${imgs.length ? `<div class="thumb"><img src="${imgs[0]}" alt="${j.title}"></div>` : ''}
+      <div class="body">
+        <h4>${j.title}</h4>
+        <div class="muted">${j.location || 'Ghana'} · by ${j.employer_name}</div>
+        <p class="muted">${(j.description || '').slice(0, 100)}${(j.description || '').length > 100 ? '…' : ''}</p>
+        <div class="salary">${j.salary || 'Negotiable'}</div>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function openJobDetail(j) {
+  const imgs = j.images && j.images.length ? j.images : [];
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      ${imgs.length ? `<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">${imgs.map(u => `<img src="${u}" style="height:90px;border-radius:8px;cursor:zoom-in" onclick='openImageLightbox(${JSON.stringify(imgs)})'>`).join('')}</div>` : ''}
+      <h3>${j.title}</h3>
+      <p class="muted">${j.location || 'Ghana'} · by ${j.employer_name}${j.position ? ' · ' + j.position : ''}</p>
+      <p class="salary" style="margin:8px 0">${j.salary || 'Negotiable'}</p>
+      ${j.description ? `<p><strong>Description:</strong> ${j.description}</p>` : ''}
+      ${j.requirements ? `<p><strong>Requirements:</strong> ${j.requirements}</p>` : ''}
+      ${(j.min_age || j.max_age) ? `<p><strong>Age:</strong> ${j.min_age || 'Any'}${j.max_age ? ' – ' + j.max_age : '+'}</p>` : ''}
+      ${j.gender_preference ? `<p><strong>Gender:</strong> ${j.gender_preference}</p>` : ''}
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" style="flex:1" onclick="applyToJob(${j.id})">Apply</button>
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.overlay').remove()">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function applyToJob(jobId) {
+  if (!state.user) { document.querySelector('.overlay')?.remove(); go('login'); return; }
+  const msg = prompt('Add a short message to the employer (optional):') || '';
+  try {
+    await api(`/api/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify({ message: msg }) });
+    alert('Application sent!');
+    document.querySelector('.overlay')?.remove();
+  } catch (err) { alert(err.message); }
+}
+
+/* ================= MKO-VENDOR ================= */
+async function renderVendor(app) {
+  const approvedReseller = state.user.role === 'reseller';
+  const approvedEmployer = state.user.role === 'employer';
+
+  if (approvedReseller || approvedEmployer) {
+    app.innerHTML = `<div id="vendorDashHolder"></div>`;
+    const holder = document.getElementById('vendorDashHolder');
+    if (approvedReseller) await renderResellerDashboard(holder);
+    else await renderEmployerDashboard(holder);
+    return;
+  }
+
+  const apps = await api('/api/vendor/status');
+  const pendingReseller = apps.find(a => a.type === 'reseller' && a.status === 'pending');
+  const pendingEmployer = apps.find(a => a.type === 'employer' && a.status === 'pending');
+
+  app.innerHTML = `
+    <h2 class="section-title">MKO-Vendor</h2>
+    <p class="muted">Become a Reseller (sell products) or an Employer (post jobs) on MakolaOnline.</p>
+    <div class="wallet-row">
+      <div class="form-box" style="flex:1">
+        <h3>Reseller</h3>
+        ${pendingReseller ? `<p class="error-box">Your application is pending Admin approval.</p>`
+          : `<button class="btn btn-primary" id="applyReseller">Apply as Reseller</button>`}
+      </div>
+      <div class="form-box" style="flex:1">
+        <h3>Employer</h3>
+        ${pendingEmployer ? `<p class="error-box">Your application is pending Admin approval.</p>`
+          : `<button class="btn btn-primary" id="applyEmployer">Apply as Employer</button>`}
+      </div>
+    </div>
+    <div id="vendorModalHolder"></div>
+  `;
+  const rBtn = document.getElementById('applyReseller');
+  const eBtn = document.getElementById('applyEmployer');
+  if (rBtn) rBtn.onclick = () => openVendorWizard('reseller');
+  if (eBtn) eBtn.onclick = () => openVendorWizard('employer');
+}
+
+/* ================= VENDOR REGISTRATION WIZARD ================= */
+let wiz = null;
+
+function openVendorWizard(type) {
+  wiz = { type, otpVerified: false, pinId: null, data: {} };
+  renderWizardStep1();
+}
+
+function wizardShell(stepLabel, bodyHtml) {
+  document.getElementById('vendorModalHolder').innerHTML = `
+    <div class="overlay" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <p class="muted" style="margin-bottom:10px">Step ${stepLabel} of 3 — ${wiz.type === 'reseller' ? 'Reseller' : 'Employer'} Registration</p>
+        ${bodyHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardStep1() {
+  wizardShell(1, `
+    <h3>Personal Information</h3>
+    <div class="field"><label>Full Name</label><input id="wFullName" value="${state.user.name || ''}"></div>
+    <div class="field"><label>Phone Number</label><input id="wPhone" value="${state.user.phone || ''}" placeholder="024 123 4567"></div>
+    <div class="field" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="wWaEnabled" checked style="width:auto;margin:0">
+      <label style="margin:0">This phone number is on WhatsApp</label>
+    </div>
+    <div class="field" id="wWaNumberBox" style="display:none"><label>WhatsApp Number</label><input id="wWaNumber"></div>
+    <div class="field"><label>Email</label><input value="${state.user.email}" disabled></div>
+    <div class="field"><label>Full Address</label><textarea id="wAddress"></textarea></div>
+    <button class="btn btn-primary" id="wNext1" style="width:100%">Next →</button>
+  `);
+  document.getElementById('wWaEnabled').onchange = (e) => {
+    document.getElementById('wWaNumberBox').style.display = e.target.checked ? 'none' : 'block';
+  };
+  document.getElementById('wNext1').onclick = () => {
+    const phone = document.getElementById('wPhone').value;
+    if (!phone) return alert('Enter your phone number.');
+    wiz.data.full_name = document.getElementById('wFullName').value;
+    wiz.data.phone = phone;
+    const waEnabled = document.getElementById('wWaEnabled').checked;
+    wiz.data.whatsapp_number = waEnabled ? phone : document.getElementById('wWaNumber').value;
+    wiz.data.full_address = document.getElementById('wAddress').value;
+    renderWizardStep2();
+  };
+}
+
+function renderWizardStep2() {
+  wizardShell(2, `
+    <h3>KYC Verification</h3>
+    <div class="field"><label>ID Type</label>
+      <select id="wIdType">
+        <option value="ghana_card">Ghana Card</option>
+        <option value="voter_id">Voter ID</option>
+        <option value="drivers_license">Driver's License</option>
+        <option value="passport">Passport</option>
+      </select>
+    </div>
+    <div class="field"><label>ID Number</label><input id="wIdNumber" placeholder="GHA-123456789-1"></div>
+    <div class="field"><label>Front ID Picture</label><input type="file" id="wIdFront" accept="image/*"><div class="muted" id="wIdFrontStatus"></div></div>
+    <div class="field"><label>Back ID Picture</label><input type="file" id="wIdBack" accept="image/*"><div class="muted" id="wIdBackStatus"></div></div>
+    <div class="field"><label>Your Picture with ID (selfie)</label><input type="file" id="wSelfie" accept="image/*"><div class="muted" id="wSelfieStatus"></div></div>
+    <div class="field"><label>Payout Account Number (MoMo or Bank)</label><input id="wPayout"></div>
+    <div class="btn-group" style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-outline" id="wBack2" style="flex:1">← Back</button>
+      <button class="btn btn-primary" id="wNext2" style="flex:1">Next →</button>
+    </div>
+  `);
+
+  const wireUpload = (fileId, statusId, key) => {
+    document.getElementById(fileId).onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const status = document.getElementById(statusId);
+      status.textContent = 'Uploading...';
+      try {
+        wiz.data[key] = await uploadImage(file);
+        status.innerHTML = '<span style="color:var(--green)">✓ Uploaded</span>';
+      } catch (err) {
+        status.textContent = '';
+        alert(err.message);
+      }
+    };
+  };
+  wireUpload('wIdFront', 'wIdFrontStatus', 'id_front_url');
+  wireUpload('wIdBack', 'wIdBackStatus', 'id_back_url');
+  wireUpload('wSelfie', 'wSelfieStatus', 'selfie_url');
+
+  document.getElementById('wBack2').onclick = renderWizardStep1;
+  document.getElementById('wNext2').onclick = () => {
+    wiz.data.id_type = document.getElementById('wIdType').value;
+    wiz.data.id_number = document.getElementById('wIdNumber').value;
+    wiz.data.payout_number = document.getElementById('wPayout').value;
+    if (!wiz.data.id_front_url || !wiz.data.id_back_url || !wiz.data.selfie_url) {
+      if (!confirm('Some ID photos are missing — continue anyway?')) return;
+    }
+    renderWizardStep3();
+  };
+}
+
+async function renderWizardStep3() {
+  const plans = await api('/api/plans?type=' + wiz.type);
+  const isReseller = wiz.type === 'reseller';
+  wizardShell(3, `
+    <h3>${isReseller ? 'Business Information' : 'Company Information'}</h3>
+    ${isReseller ? `
+      <div class="field"><label>Business Name</label><input id="wBizName"></div>
+      <div class="field"><label>Business Address</label><input id="wBizAddress"></div>
+      <div class="field"><label>Region</label><input id="wBizRegion" placeholder="e.g. Greater Accra"></div>
+      <div class="field"><label>What are you selling?</label><textarea id="wBizWhat" rows="2"></textarea></div>
+    ` : `
+      <div class="field"><label>Company Name</label><input id="wCompanyName"></div>
+      <div class="field"><label>Your Position</label><input id="wPosition" placeholder="CEO, Manager, Owner"></div>
+      <div class="field"><label>Company Address</label><input id="wCompanyAddress"></div>
+    `}
+    <div class="field"><label>Choose Monthly Plan</label>
+      ${plans.map(p => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+          <input type="radio" name="wPlanPick" value="${p.code}" ${plans[0].code === p.code ? 'checked' : ''} ${plans.length === 1 ? 'disabled checked' : ''}>
+          <span style="flex:1"><strong>${p.name}</strong> — ${money(p.price)}/mo
+            <div class="muted">${p.product_limit ? p.product_limit + ' products max' : 'Unlimited products'}${p.price_cap ? `, items up to ${money(p.price_cap)}` : ', no price limit'}</div>
+          </span>
+        </label>
+      `).join('')}
+    </div>
+    <div class="field"><label>Coupon Code (optional)</label><input id="wCoupon" placeholder="e.g. JOIN20"></div>
+    <div class="btn-group" style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-outline" id="wBack3" style="flex:1">← Back</button>
+      <button class="btn btn-primary" id="wSubmit" style="flex:1">Pay &amp; Submit</button>
+    </div>
+  `);
+
+  document.getElementById('wBack3').onclick = renderWizardStep2;
+  document.getElementById('wSubmit').onclick = async () => {
+    const plan_code = document.querySelector('input[name="wPlanPick"]:checked').value;
+    const coupon_code = document.getElementById('wCoupon').value.trim();
+    const extra = isReseller
+      ? {
+          business_name: document.getElementById('wBizName').value,
+          business_address: document.getElementById('wBizAddress').value,
+          business_region: document.getElementById('wBizRegion').value,
+          business_category: document.getElementById('wBizWhat').value,
+        }
+      : {
+          company_name: document.getElementById('wCompanyName').value,
+          position: document.getElementById('wPosition').value,
+          company_address: document.getElementById('wCompanyAddress').value,
+        };
+    try {
+      await api('/api/vendor/apply', { method: 'POST', body: JSON.stringify({
+        type: wiz.type, plan_code, coupon_code: coupon_code || undefined,
+        ...wiz.data, ...extra,
+      })});
+      document.querySelector('.overlay').remove();
+      wiz = null;
+      render();
+    } catch (err) {
+      if (/balance|deposit/i.test(err.message)) {
+        if (confirm(err.message + '\n\nOpen Deposit now?')) openDepositModal();
+      } else {
+        alert(err.message);
+      }
+    }
+  };
+}
+
+/* ================= ORDERS ================= */
+async function renderOrders(app) {
+  const orders = await api('/api/orders');
+  app.innerHTML = `
+    <h2 class="section-title">My Orders</h2>
+    ${orders.length ? `
+      <table>
+        <tr><th>Order No</th><th>Total</th><th>Status</th><th>Date</th><th></th></tr>
+        ${orders.map(o => `
+          <tr>
+            <td>${o.order_no}</td><td>${money(o.total)}</td>
+            <td><span class="badge ${o.status}">${o.status}</span></td>
+            <td>${new Date(o.created_at).toLocaleDateString()}</td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewOrder(${o.id})">View</button></td>
+          </tr>`).join('')}
+      </table>` : `<div class="empty">You haven't placed any orders yet.</div>`}
+    <div id="orderDetail"></div>
+  `;
+}
+
+async function viewOrder(id) {
+  const o = await api('/api/orders/' + id);
+  document.getElementById('orderDetail').innerHTML = `
+    <div class="overlay" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <h3>Order ${o.order_no}</h3>
+        <p class="muted">Status: <span class="badge ${o.status}">${o.status}</span></p>
+        ${o.status === 'rejected' && o.reject_reason ? `<p class="error-box">Declined: ${o.reject_reason}</p>` : ''}
+        ${['approved', 'shipped'].includes(o.status) && o.delivery_deadline ? `<p class="muted">Expected by: ${new Date(o.delivery_deadline).toLocaleDateString()}</p>` : ''}
+        <table>
+          <tr><th>Product</th><th>Qty</th></tr>
+          ${o.items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td></tr>`).join('')}
+        </table>
+        <p style="margin-top:12px;font-weight:700">Total: ${money(o.total)}</p>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          ${o.status === 'shipped' ? `<button class="btn btn-primary btn-sm" onclick="markDelivered(${o.id})">Mark as Delivered</button>` : ''}
+          ${['approved', 'shipped', 'completed'].includes(o.status) ? `<button class="btn btn-outline btn-sm" onclick="openOrderChat(${o.id})">💬 Chat with Seller</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.overlay').remove()">Close</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function markDelivered(id) {
+  if (!confirm('Confirm the item has arrived? This releases payment to the seller and cannot be undone.')) return;
+  try {
+    await api(`/api/orders/${id}/mark-delivered`, { method: 'POST' });
+    document.querySelector('.overlay')?.remove();
+    render();
+  } catch (err) { alert(err.message); }
+}
+
+/* ================= ORDER CHAT ================= */
+async function openOrderChat(orderId) {
+  const holder = document.getElementById('orderDetail') || document.body;
+  const box = document.createElement('div');
+  box.className = 'overlay';
+  box.onclick = (e) => { if (e.target === box) box.remove(); };
+  box.innerHTML = `
+    <div class="modal">
+      <h3>Order Chat</h3>
+      <div id="chatMsgList" style="max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <input id="chatMsgInput" placeholder="Type a message..." style="flex:1">
+        <button class="btn btn-primary btn-sm" id="chatMsgSend">Send</button>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>`;
+  holder.appendChild(box);
+
+  async function loadMsgs() {
+    const msgs = await api(`/api/orders/${orderId}/messages`);
+    document.getElementById('chatMsgList').innerHTML = msgs.length ? msgs.map(m => `
+      <div class="chat-msg ${m.sender_id === state.user.id ? 'me' : 'bot'}"><strong>${m.sender_name}:</strong> ${m.message}</div>
+    `).join('') : `<p class="muted">No messages yet — say hello!</p>`;
+  }
+  await loadMsgs();
+  document.getElementById('chatMsgSend').onclick = async () => {
+    const input = document.getElementById('chatMsgInput');
+    if (!input.value.trim()) return;
+    try {
+      await api(`/api/orders/${orderId}/messages`, { method: 'POST', body: JSON.stringify({ message: input.value }) });
+      input.value = '';
+      await loadMsgs();
+    } catch (err) { alert(err.message); }
+  };
+}
+
+/* ================= CART MODAL ================= */
+/* ================= NOTIFICATIONS (bell) ================= */
+async function refreshBell() {
+  if (!state.user) { document.getElementById('bellBadge').style.display = 'none'; return; }
+  try {
+    const notifs = await api('/api/notifications');
+    const unread = notifs.filter(n => !n.is_read).length;
+    const badge = document.getElementById('bellBadge');
+    badge.style.display = unread ? 'flex' : 'none';
+    badge.textContent = unread;
+    return notifs;
+  } catch { return []; }
+}
+async function refreshMsgBadge() {
+  if (!state.user) { document.getElementById('msgBadge').style.display = 'none'; return; }
+  try {
+    const r = await api('/api/support/unread-count');
+    const badge = document.getElementById('msgBadge');
+    badge.style.display = r.count ? 'flex' : 'none';
+    badge.textContent = r.count;
+  } catch { /* ignore */ }
+}
+document.getElementById('msgBtn').onclick = () => {
+  if (!state.user) { go('login'); return; }
+  profileTab = 'messages';
+  go('profile');
+};
+document.getElementById('bellBtn').onclick = async () => {
+  const holder = document.getElementById('bellDropdown');
+  if (holder.innerHTML) { holder.innerHTML = ''; return; }
+  if (!state.user) { go('login'); return; }
+  const notifs = await refreshBell();
+  holder.innerHTML = `<div class="bell-dropdown">
+    ${notifs.length ? notifs.map(n => `
+      <div class="bell-item ${n.is_read ? '' : 'unread'}">
+        ${n.message}<div class="bt">${new Date(n.created_at).toLocaleString()}</div>
+      </div>`).join('') : `<div class="bell-item muted">No notifications yet.</div>`}
+  </div>`;
+  // Opening the dropdown IS viewing them — mark everything read and clear the badge.
+  if (notifs.some(n => !n.is_read)) {
+    await api('/api/notifications/mark-all-read', { method: 'POST' });
+    refreshBell();
+  }
+};
+document.addEventListener('click', (e) => {
+  const holder = document.getElementById('bellDropdown');
+  if (holder && holder.innerHTML && !e.target.closest('#bellDropdown') && !e.target.closest('#bellBtn')) holder.innerHTML = '';
+});
+
+document.getElementById('cartBtn').onclick = () => openCartModal();
+
+function openCartModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Your Cart</h3>
+      ${state.cart.length ? `
+        <table>
+          <tr><th>Item</th><th>Qty</th><th>Price</th><th></th></tr>
+          ${state.cart.map((i, idx) => `
+            <tr><td>${i.name}</td><td>${i.qty}</td><td>${money(i.price * i.qty)}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="removeFromCart(${idx})">✕</button></td></tr>`).join('')}
+        </table>
+        <p style="margin:12px 0;font-weight:700">Total: ${money(total)}</p>
+        <button class="btn btn-primary" id="toCheckoutBtn" style="width:100%">Checkout →</button>
+      ` : `<p class="muted">Your cart is empty.</p>`}
+      <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const cb = document.getElementById('toCheckoutBtn');
+  if (cb) cb.onclick = () => {
+    if (!state.user) { overlay.remove(); go('login'); return; }
+    overlay.remove();
+    openDeliveryDetailsModal();
+  };
+}
+
+function openDeliveryDetailsModal() {
+  const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Delivery Details</h3>
+      <p class="muted">Total: ${money(total)}</p>
+      <div class="field"><label>Full Name</label><input id="coFullName" value="${state.user.name || ''}"></div>
+      <div class="field"><label>Phone Number</label><input id="coPhone" value="${state.user.phone || ''}"></div>
+      <div class="field" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="coWaEnabled" checked style="width:auto;margin:0">
+        <label style="margin:0">This phone number is on WhatsApp</label>
+      </div>
+      <div class="field" id="coWaNumberBox" style="display:none"><label>WhatsApp Number</label><input id="coWaNumber"></div>
+      <div class="field"><label>State / Region</label><input id="coRegion" placeholder="e.g. Greater Accra"></div>
+      <div class="field"><label>Full Address</label><textarea id="coAddress"></textarea></div>
+      <div class="field"><label>MakolaOnline Coupon (optional)</label><input id="cartCoupon" placeholder="e.g. SAVE10"></div>
+      <div class="field"><label>Seller's Discount Code (optional)</label><input id="cartResellerCoupon" placeholder="e.g. WELCOME10"></div>
+      <button class="btn btn-primary" id="checkoutBtn" style="width:100%">Pay ${money(total)}</button>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="this.closest('.overlay').remove()">← Back to Cart</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('coWaEnabled').onchange = (e) => {
+    document.getElementById('coWaNumberBox').style.display = e.target.checked ? 'none' : 'block';
+  };
+  document.getElementById('checkoutBtn').onclick = async () => {
+    const full_name = document.getElementById('coFullName').value;
+    const phone = document.getElementById('coPhone').value;
+    const address = document.getElementById('coAddress').value;
+    if (!full_name || !phone || !address) return alert('Full name, phone, and address are required.');
+    try {
+      await api('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          items: state.cart.map(i => ({ product_id: i.product_id, qty: i.qty })),
+          full_name, phone,
+          whatsapp_enabled: document.getElementById('coWaEnabled').checked,
+          whatsapp_number: document.getElementById('coWaNumber').value,
+          region: document.getElementById('coRegion').value,
+          address,
+          coupon_code: document.getElementById('cartCoupon').value.trim() || undefined,
+          reseller_coupon_code: document.getElementById('cartResellerCoupon').value.trim() || undefined,
+        }),
+      });
+      state.cart = []; saveCart(); overlay.remove(); go('orders');
+    } catch (err) {
+      if (/balance|deposit/i.test(err.message)) {
+        if (confirm(err.message + '\n\nOpen Deposit now?')) openDepositModal();
+      } else {
+        alert(err.message);
+      }
+    }
+  };
+}
+
+function removeFromCart(idx) {
+  state.cart.splice(idx, 1); saveCart();
+  document.querySelector('.overlay')?.remove();
+  openCartModal();
+}
+
+/* ================= PROFILE ================= */
+let profileTab = null; // null = show the main menu list
+async function renderProfile(app) {
+  if (!profileTab) {
+    const items = [
+      ['history', '📜', 'Order History'],
+    ];
+    if (state.user.role === 'reseller') items.push(['reseller', '🏬', 'Reseller Dashboard', 'Active']);
+    if (state.user.role === 'employer') items.push(['employer', '🧰', 'Employer Dashboard', 'Active']);
+    if (state.user.role === 'reseller' || state.user.role === 'employer') items.push(['subscription', '📅', 'My Subscription']);
+    items.push(['addresses', '📍', 'Delivery Addresses']);
+    items.push(['wallet', '👛', 'Wallet & Cashback']);
+    if (state.user.isAdmin) items.push(['admin-link', '🛠️', 'Admin Panel', 'Owner only']);
+    items.push(['messages', '✉️', 'Message Center']);
+    items.push(['privacy-link', '📄', 'Privacy Policy & Terms']);
+    items.push(['help-link', '🆘', 'Help & Support']);
+    items.push(['logout-link', '🚪', 'Log Out']);
+
+    app.innerHTML = `
+      <div class="profile-header">
+        <div class="avatar-circle">${state.user.name.charAt(0).toUpperCase()}</div>
+        <div>
+          <div class="pname">${state.user.name} <span class="badge ${state.user.status}">${state.user.status}</span></div>
+          <div class="pemail">${state.user.email}</div>
+        </div>
+      </div>
+      <div class="menu-list">
+        ${items.map(([id, icon, label, badge]) => `
+          <div class="menu-item" data-mi="${id}">
+            <span class="mi-icon">${icon}</span>
+            <span class="mi-label">${label}</span>
+            ${badge ? `<span class="badge active">${badge}</span>` : ''}
+            <span class="mi-chevron">›</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    document.querySelectorAll('[data-mi]').forEach(el => el.onclick = () => {
+      const id = el.dataset.mi;
+      if (id === 'admin-link') return go('admin');
+      if (id === 'privacy-link') return go('privacy');
+      if (id === 'help-link') return go('help');
+      if (id === 'logout-link') return logout();
+      profileTab = id;
+      renderProfile(app);
+    });
+    return;
+  }
+
+  const titles = {
+    history: 'Order History', reseller: 'Reseller Dashboard', employer: 'Employer Dashboard',
+    addresses: 'Delivery Addresses', wallet: 'Wallet & Cashback', subscription: 'My Subscription',
+    messages: 'Message Center',
+  };
+  app.innerHTML = `
+    <div class="back-row">
+      <button class="btn btn-outline btn-sm" id="backToMenu">← Back</button>
+      <h2 class="section-title" style="margin:0">${titles[profileTab] || ''}</h2>
+    </div>
+    <div id="profileContent"></div>
+  `;
+  document.getElementById('backToMenu').onclick = () => { profileTab = null; renderProfile(app); };
+
+  const content = document.getElementById('profileContent');
+  if (profileTab === 'history') {
+    const hist = await api('/api/history');
+    content.innerHTML = hist.length ? `
+      <table><tr><th>Action</th><th>Details</th><th>Date</th></tr>
+      ${hist.map(h => `<tr style="cursor:pointer" onclick='viewHistoryDetail(${JSON.stringify(h).replace(/'/g, "&apos;")})'><td>${h.action}</td><td>${h.details || '—'}</td><td>${new Date(h.created_at).toLocaleString()}</td></tr>`).join('')}
+      </table>` : `<div class="empty">No history yet.</div>`;
+  } else if (profileTab === 'addresses') {
+    await renderAddresses(content);
+  } else if (profileTab === 'wallet') {
+    await renderWallet(content);
+  } else if (profileTab === 'reseller') {
+    await renderResellerDashboard(content);
+  } else if (profileTab === 'employer') {
+    await renderEmployerDashboard(content);
+  } else if (profileTab === 'subscription') {
+    await renderSubscriptionTab(content);
+  } else if (profileTab === 'messages') {
+    await renderMessageCenter(content);
+  }
+}
+
+async function renderAddresses(content) {
+  const list = await api('/api/addresses');
+  content.innerHTML = `
+    <div class="form-box" style="margin-bottom:20px">
+      <h3>Add Address</h3>
+      <div class="field"><label>Address</label><input id="addrLine"></div>
+      <div class="field"><label>City</label><input id="addrCity"></div>
+      <div class="field"><label>Region</label><input id="addrRegion"></div>
+      <button class="btn btn-primary" id="addAddrBtn">Save Address</button>
+    </div>
+    ${list.length ? `<table><tr><th>Address</th><th>City</th><th>Region</th><th></th></tr>
+      ${list.map(a => `<tr><td>${a.address_line}</td><td>${a.city || '—'}</td><td>${a.region || '—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteAddress(${a.id})">Delete</button></td></tr>`).join('')}
+      </table>` : `<div class="empty">No addresses yet.</div>`}
+  `;
+  document.getElementById('addAddrBtn').onclick = async () => {
+    try {
+      await api('/api/addresses', { method: 'POST', body: JSON.stringify({
+        address_line: document.getElementById('addrLine').value,
+        city: document.getElementById('addrCity').value,
+        region: document.getElementById('addrRegion').value,
+      })});
+      render();
+    } catch (err) { alert(err.message); }
+  };
+}
+async function deleteAddress(id) { await api('/api/addresses/' + id, { method: 'DELETE' }); render(); }
+
+async function renderWallet(content) {
+  const [wallet, cashback, banks] = await Promise.all([
+    api('/api/wallet'), api('/api/wallet/cashback'), api('/api/bank-accounts'),
+  ]);
+
+  const cards = [
+    ['Available Balance', wallet.available, ''],
+    ['Cashback', wallet.cashback, 'cashback'],
+    ['Refund (total received)', wallet.totalRefunded, ''],
+  ];
+  if (state.user.role === 'reseller') cards.push(['Pending Balance', wallet.pending, '']);
+
+  content.innerHTML = `
+    <div class="wallet-row">
+      ${cards.map(([label, amt, cls]) => `
+        <div class="wallet-card ${cls}">${label}<div class="amt">${money(amt)}</div></div>
+      `).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+      <button class="btn btn-primary" id="depositBtn">Deposit</button>
+      <button class="btn btn-outline" id="withdrawBtn">Withdraw</button>
+      ${wallet.cashback > 0 ? `<button class="btn btn-outline" id="convertBtn">Move Cashback → Available</button>` : ''}
+    </div>
+
+    <h3 style="margin-bottom:10px">Bank Accounts</h3>
+    ${banks.length ? `<table style="margin-bottom:10px"><tr><th>Bank</th><th>Account</th><th>Name</th><th></th></tr>
+      ${banks.map(b => `<tr><td>${b.bank_name}</td><td>${b.account_number}</td><td>${b.account_name || '—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteBankAccount(${b.id})">Delete</button></td></tr>`).join('')}
+      </table>` : `<p class="muted">No bank accounts added yet.</p>`}
+    <button class="btn btn-outline btn-sm" id="addBankBtn" style="margin-bottom:24px">+ Add Bank Account</button>
+
+    <h3 style="margin-bottom:10px">Security Code</h3>
+    <p class="muted" style="margin-bottom:10px">A 5-digit code you'll enter to confirm every withdrawal.</p>
+    <button class="btn btn-outline btn-sm" id="secCodeBtn">${wallet.securityCodeSet ? 'Change Security Code' : 'Set Security Code'}</button>
+
+    <h3 style="margin-top:26px">Cashback History</h3>
+    ${cashback.all.length ? `<table><tr><th>Amount</th><th>Status</th><th>Date</th></tr>
+      ${cashback.all.map(c => `<tr><td>${money(c.amount)}</td><td><span class="badge ${c.status}">${c.status}</span></td><td>${new Date(c.created_at).toLocaleDateString()}</td></tr>`).join('')}
+      </table>` : `<p class="muted">No cashback yet.</p>`}
+    <div id="walletModalHolder"></div>
+  `;
+
+  document.getElementById('depositBtn').onclick = () => openDepositModal();
+  document.getElementById('withdrawBtn').onclick = () => openWithdrawModal(banks, wallet.available, wallet.securityCodeSet);
+  document.getElementById('addBankBtn').onclick = () => openAddBankModal();
+  document.getElementById('secCodeBtn').onclick = () => openSecurityCodeModal(wallet.securityCodeSet);
+  const cb = document.getElementById('convertBtn');
+  if (cb) cb.onclick = async () => {
+    try { await api('/api/wallet/cashback/convert', { method: 'POST' }); render(); }
+    catch (err) { alert(err.message); }
+  };
+}
+
+function walletModal(html) {
+  const existing = document.getElementById('walletModalHolder');
+  const overlayHtml = `<div class="overlay" onclick="if(event.target===this) this.remove()"><div class="modal">${html}</div></div>`;
+  if (existing) {
+    existing.innerHTML = overlayHtml;
+  } else {
+    document.querySelectorAll('.overlay.global-modal').forEach(el => el.remove());
+    const div = document.createElement('div');
+    div.innerHTML = overlayHtml;
+    div.firstElementChild.classList.add('global-modal');
+    document.body.appendChild(div.firstElementChild);
+  }
+}
+
+function openDepositModal() {
+  walletModal(`
+    <h3>Deposit into Wallet</h3>
+    <p class="muted">You'll be taken to Flutterwave's secure checkout to pay by card, bank transfer, or mobile money.</p>
+    <div class="field"><label>Amount (GHS)</label><input id="depAmount" type="number" min="1"></div>
+    <button class="btn btn-primary" id="depGo">Continue to Payment</button>
+  `);
+  document.getElementById('depGo').onclick = async () => {
+    try {
+      const { link } = await api('/api/wallet/deposit/initiate', { method: 'POST', body: JSON.stringify({
+        amount: document.getElementById('depAmount').value,
+      })});
+      window.location.href = link;
+    } catch (err) { alert(err.message); }
+  };
+}
+
+function openWithdrawModal(banks, available, securityCodeSet) {
+  if (!banks.length) {
+    walletModal(`<h3>Withdraw</h3><p class="muted">Add a bank account first before you can withdraw.</p>
+      <button class="btn btn-outline btn-sm" onclick="document.querySelector('.overlay').remove()">Close</button>`);
+    return;
+  }
+  if (!securityCodeSet) {
+    walletModal(`<h3>Withdraw</h3><p class="muted">Please set your 5-digit security code first (see Security Code section).</p>
+      <button class="btn btn-outline btn-sm" onclick="document.querySelector('.overlay').remove()">Close</button>`);
+    return;
+  }
+  walletModal(`
+    <h3>Withdraw</h3>
+    <p class="muted">Available: ${money(available)}</p>
+    <div class="field"><label>Bank Account</label>
+      <select id="wdBank">${banks.map(b => `<option value="${b.id}">${b.bank_name} — ${b.account_number} (${b.account_name || ''})</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Amount (GHS)</label><input id="wdAmount" type="number" min="1"></div>
+    <div class="field"><label>Security Code (5 digits)</label><input id="wdCode" type="password" inputmode="numeric" maxlength="5"></div>
+    <button class="btn btn-primary" id="wdGo">Withdraw</button>
+  `);
+  document.getElementById('wdGo').onclick = async () => {
+    try {
+      await api('/api/wallet/withdraw', { method: 'POST', body: JSON.stringify({
+        bank_account_id: document.getElementById('wdBank').value,
+        amount: document.getElementById('wdAmount').value,
+        security_code: document.getElementById('wdCode').value,
+      })});
+      document.querySelector('.overlay').remove();
+      render();
+    } catch (err) { alert(err.message); }
+  };
+}
+
+async function openAddBankModal() {
+  walletModal(`<h3>Add Bank Account</h3><p class="muted">Loading banks...</p>`);
+  try {
+    const banks = await api('/api/banks');
+    walletModal(`
+      <h3>Add Bank Account</h3>
+      <div class="field"><label>Bank</label>
+        <select id="newBankSelect">${banks.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Account Number</label><input id="newBankAccNo"></div>
+      <button class="btn btn-primary" id="newBankGo">Verify &amp; Save</button>
+    `);
+    document.getElementById('newBankGo').onclick = async () => {
+      try {
+        const sel = document.getElementById('newBankSelect');
+        await api('/api/bank-accounts', { method: 'POST', body: JSON.stringify({
+          bank_code: sel.value,
+          bank_name: sel.selectedOptions[0].dataset.name,
+          account_number: document.getElementById('newBankAccNo').value,
+        })});
+        document.querySelector('.overlay').remove();
+        render();
+      } catch (err) { alert(err.message); }
+    };
+  } catch (err) {
+    walletModal(`<h3>Add Bank Account</h3><div class="error-box">${err.message}</div>`);
+  }
+}
+
+async function deleteBankAccount(id) { await api('/api/bank-accounts/' + id, { method: 'DELETE' }); render(); }
+
+function openSecurityCodeModal(isSet) {
+  walletModal(`
+    <h3>${isSet ? 'Change' : 'Set'} Security Code</h3>
+    <p class="muted">Exactly 5 digits. You'll need this to confirm every withdrawal.</p>
+    ${isSet ? `<div class="field"><label>Current Code</label><input id="secCurrent" type="password" inputmode="numeric" maxlength="5"></div>` : ''}
+    <div class="field"><label>New Code</label><input id="secNew" type="password" inputmode="numeric" maxlength="5"></div>
+    <div class="field"><label>Confirm New Code</label><input id="secConfirm" type="password" inputmode="numeric" maxlength="5"></div>
+    <button class="btn btn-primary" id="secGo">Save</button>
+  `);
+  document.getElementById('secGo').onclick = async () => {
+    const code = document.getElementById('secNew').value;
+    const confirmCode = document.getElementById('secConfirm').value;
+    if (code !== confirmCode) return alert('The two codes do not match.');
+    try {
+      await api('/api/wallet/security-code', { method: 'POST', body: JSON.stringify({
+        code,
+        current_code: isSet ? document.getElementById('secCurrent').value : undefined,
+      })});
+      document.querySelector('.overlay').remove();
+      render();
+    } catch (err) { alert(err.message); }
+  };
+}
+
+async function renderSubscriptionTab(content) {
+  const sub = await api('/api/subscription');
+  if (!sub) { content.innerHTML = `<div class="empty">No subscription found.</div>`; return; }
+  const plans = await api('/api/plans?type=' + state.user.role);
+  content.innerHTML = `
+    <div class="wallet-row">
+      <div class="wallet-card ${sub.status !== 'active' ? '' : ''}" style="${sub.status !== 'active' ? 'background:var(--red)' : ''}">
+        ${sub.name} Plan<div class="amt">${money(sub.price)}/mo</div>
+      </div>
+    </div>
+    <p><strong>Status:</strong> <span class="badge ${sub.status === 'active' ? 'active' : 'rejected'}">${sub.status}</span></p>
+    <p><strong>Renews:</strong> ${new Date(sub.renews_at).toLocaleDateString()}</p>
+    ${sub.product_limit ? `<p><strong>Products:</strong> ${sub.productCount ?? 0} / ${sub.product_limit}</p>` : sub.productCount != null ? `<p><strong>Products:</strong> ${sub.productCount} (unlimited)</p>` : ''}
+    <p class="muted">${sub.price_cap ? `Items must be priced at or under ${money(sub.price_cap)}.` : 'No price limit on items.'}</p>
+    ${sub.status !== 'active' ? `<div class="error-box">Your plan is suspended — renew below to unlock your dashboard again.</div>` : ''}
+    ${plans.length > 1 ? `
+      <h4 style="margin:14px 0 8px">Keep or change plan</h4>
+      ${plans.map(p => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+          <input type="radio" name="subPlanPick" value="${p.code}" ${p.code === sub.code ? 'checked' : ''}>
+          <span style="flex:1"><strong>${p.name}</strong> — ${money(p.price)}/mo
+            <div class="muted">${p.product_limit ? p.product_limit + ' products max' : 'Unlimited products'}${p.price_cap ? `, items up to ${money(p.price_cap)}` : ', no price limit'}</div>
+          </span>
+        </label>`).join('')}
+    ` : ''}
+    <div class="field" style="max-width:300px;margin-top:10px"><label>Coupon Code (optional)</label><input id="subCoupon" placeholder="e.g. RENEW10"></div>
+    <button class="btn btn-primary" id="subRenewBtn">Renew Now</button>
+  `;
+  document.getElementById('subRenewBtn').onclick = async () => {
+    const picked = document.querySelector('input[name="subPlanPick"]:checked');
+    try {
+      await api('/api/subscription/renew-now', { method: 'POST', body: JSON.stringify({
+        plan_code: picked ? picked.value : undefined,
+        coupon_code: document.getElementById('subCoupon').value.trim() || undefined,
+      })});
+      render();
+    } catch (err) {
+      if (/balance|deposit/i.test(err.message)) {
+        if (confirm(err.message + '\n\nOpen Deposit now?')) openDepositModal();
+      } else {
+        alert(err.message);
+      }
+    }
+  };
+}
+
+function goToWallet() { profileTab = 'wallet'; go('profile'); }
+
+async function renderResellerDashboard(content) {
+  const [dash, products, orders] = await Promise.all([
+    api('/api/reseller/dashboard'), api('/api/reseller/products'), api('/api/reseller/orders'),
+  ]);
+  const sub = dash.subscription;
+  content.innerHTML = `
+    <div class="ok-box">✅ Verified — your store is live</div>
+    <div class="profile-header">
+      <div class="avatar-circle">${state.user.name.charAt(0).toUpperCase()}</div>
+      <div>
+        <div class="pname">${state.user.name}</div>
+        <div class="pemail">🟢 Verified reseller${sub ? ` · ${sub.name.toLowerCase()} (${money(sub.price)}/mo)` : ''}</div>
+      </div>
+    </div>
+    <div class="wallet-row">
+      <div class="wallet-card">${dash.productsLive}<div class="amt" style="font-size:20px">products live</div></div>
+      <div class="wallet-card">${dash.ordersReceived}<div class="amt" style="font-size:20px">orders received</div></div>
+      <div class="wallet-card cashback">${money(dash.earned)}<div class="amt" style="font-size:20px">earned</div></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      <button class="btn btn-outline" id="goWalletBtn">👛 Open my Wallet →</button>
+      <button class="btn btn-primary" id="newProductBtn">➕ Post a new product →</button>
+    </div>
+
+    <h3 style="margin-bottom:10px">My products</h3>
+    ${products.length ? `<table style="margin-bottom:24px"><tr><th>Name</th><th>Price</th><th>Status</th><th></th></tr>
+      ${products.map(p => `<tr><td>${p.name}</td><td>${money(p.price)}</td><td><span class="badge ${p.status}">${p.status}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}
+      </table>` : `<div class="empty" style="margin-bottom:24px">You haven't listed anything yet — add your first product below.</div>`}
+
+    <h3 style="margin-bottom:10px">Orders from customers</h3>
+    ${orders.length ? orders.map(o => `
+      <div class="form-box" style="margin-bottom:12px">
+        <p><strong>${o.order_no}</strong> — ${o.customer_name} · ${money(o.my_share)} <span class="badge ${o.status}">${o.status}</span></p>
+        <p class="muted">${o.customer_address || ''}${o.customer_region ? ', ' + o.customer_region : ''}</p>
+        <p class="muted">📞 ${o.customer_phone || '—'}${o.whatsapp_enabled ? ' (WhatsApp)' : o.whatsapp_number ? ` · WhatsApp: ${o.whatsapp_number}` : ''}</p>
+        ${o.status === 'rejected' && o.reject_reason ? `<p class="muted">Declined: ${o.reject_reason}</p>` : ''}
+        ${['approved', 'shipped'].includes(o.status) && o.delivery_deadline ? `<p class="muted">Deliver by: ${new Date(o.delivery_deadline).toLocaleDateString()}</p>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          ${o.status === 'processing' ? `
+            <button class="btn btn-primary btn-sm" onclick="approveOrder(${o.id})">Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectOrder(${o.id})">Decline</button>
+          ` : ''}
+          ${o.status === 'approved' ? `<button class="btn btn-primary btn-sm" onclick="shipOrder(${o.id})">Mark as Shipped</button>` : ''}
+          ${['approved', 'shipped', 'completed'].includes(o.status) ? `<button class="btn btn-outline btn-sm" onclick="openOrderChat(${o.id})">💬 Chat with Customer</button>` : ''}
+        </div>
+      </div>
+    `).join('') : `<div class="empty">No orders yet — once a customer books your product, it shows up here.</div>`}
+    <div id="productModalHolder"></div>
+  `;
+  document.getElementById('goWalletBtn').onclick = goToWallet;
+  document.getElementById('newProductBtn').onclick = () => {
+    let pImages = [];
+    document.getElementById('productModalHolder').innerHTML = `
+      <div class="overlay" onclick="if(event.target===this) this.remove()">
+        <div class="modal">
+          <h3>Post something new</h3>
+          <p class="muted">📦 Product — ships to the customer, Home</p>
+          <div class="field"><label>Photos (up to 5)</label>
+            <input type="file" id="pImageFile" accept="image/*" multiple>
+            <div class="muted" id="pImageStatus" style="margin-top:6px"></div>
+            <div id="pImagePreview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+          </div>
+          <div class="field"><label>Name (e.g. Ankara Dress)</label><input id="pName"></div>
+          <div class="field"><label>Describe it — what convinces a customer to book or buy?</label><textarea id="pDesc"></textarea></div>
+          <div class="field"><label>Price (GHS)</label><input id="pPrice" type="number" min="0"></div>
+          <div class="field"><label>Category</label><input id="pCategory"></div>
+          <div class="field">
+            <label>Your own discount code (optional)</label>
+            <div style="display:flex;gap:8px">
+              <input id="pCouponCode" placeholder="Code (e.g. WELCOME10)" style="flex:1">
+              <input id="pCouponPercent" type="number" min="1" max="100" placeholder="% off" style="width:90px">
+            </div>
+            <p class="muted">Give customers this code at checkout for an instant discount — comes out of your own payout, not MakolaOnline.</p>
+          </div>
+          <p class="muted">${state.user.name}</p>
+          <button class="btn btn-primary" id="pSubmit" style="width:100%">Post on MakolaOnline</button>
+        </div>
+      </div>`;
+    document.getElementById('pImageFile').onchange = async (e) => {
+      const files = Array.from(e.target.files).slice(0, 5 - pImages.length);
+      const status = document.getElementById('pImageStatus');
+      for (const file of files) {
+        status.textContent = `Uploading ${pImages.length + 1}/5...`;
+        try {
+          const url = await uploadImage(file);
+          pImages.push(url);
+          document.getElementById('pImagePreview').innerHTML = pImages.map(u => `<img src="${u}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">`).join('');
+        } catch (err) { alert(err.message); }
+      }
+      status.textContent = pImages.length ? `✓ ${pImages.length}/5 photos added` : '';
+    };
+    document.getElementById('pSubmit').onclick = async () => {
+      try {
+        await api('/api/reseller/products', { method: 'POST', body: JSON.stringify({
+          name: document.getElementById('pName').value,
+          price: document.getElementById('pPrice').value,
+          images: pImages,
+          category: document.getElementById('pCategory').value,
+          description: document.getElementById('pDesc').value,
+          coupon_code: document.getElementById('pCouponCode').value.trim() || undefined,
+          coupon_percent: document.getElementById('pCouponPercent').value || undefined,
+        })});
+        document.querySelector('.overlay').remove();
+        render();
+      } catch (err) { alert(err.message); }
+    };
+  };
+}
+async function deleteProduct(id) { await api('/api/reseller/products/' + id, { method: 'DELETE' }); render(); }
+
+async function approveOrder(id) {
+  const days = prompt('Deliver within how many days?', '7');
+  if (days === null) return;
+  try {
+    await api(`/api/reseller/orders/${id}/approve`, { method: 'POST', body: JSON.stringify({ delivery_days: days }) });
+    render();
+  } catch (err) { alert(err.message); }
+}
+async function rejectOrder(id) {
+  const reason = prompt('Reason for declining this order (shown to the customer):');
+  if (reason === null) return;
+  if (!confirm('Decline this order? The customer will be refunded immediately.')) return;
+  try {
+    await api(`/api/reseller/orders/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+    render();
+  } catch (err) { alert(err.message); }
+}
+async function shipOrder(id) {
+  if (!confirm('Mark this order as shipped/delivered to the customer?')) return;
+  try {
+    await api(`/api/reseller/orders/${id}/ship`, { method: 'POST' });
+    render();
+  } catch (err) { alert(err.message); }
+}
+
+async function renderEmployerDashboard(content) {
+  const [dash, jobs] = await Promise.all([api('/api/employer/dashboard'), api('/api/employer/jobs')]);
+  const sub = dash.subscription;
+  content.innerHTML = `
+    <div class="ok-box">✅ Verified — your company page is live</div>
+    <div class="profile-header">
+      <div class="avatar-circle">${state.user.name.charAt(0).toUpperCase()}</div>
+      <div>
+        <div class="pname">${state.user.name}</div>
+        <div class="pemail">🟢 Verified employer${sub ? ` · ${sub.name.toLowerCase()} (${money(sub.price)}/mo)` : ''}</div>
+      </div>
+    </div>
+    <div class="wallet-row">
+      <div class="wallet-card">${dash.jobsLive}<div class="amt" style="font-size:20px">jobs live</div></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      <button class="btn btn-outline" id="goWalletBtn">👛 Open my Wallet →</button>
+      <button class="btn btn-primary" id="newJobBtn">➕ Post a new job →</button>
+    </div>
+
+    <h3 style="margin-bottom:10px">My jobs</h3>
+    ${jobs.length ? `<table><tr><th>Title</th><th>Location</th><th>Status</th><th></th></tr>
+      ${jobs.map(j => `<tr><td>${j.title}</td><td>${j.location || '—'}</td><td><span class="badge ${j.status}">${j.status}</span></td>
+        <td><button class="btn btn-outline btn-sm" onclick="viewJobApplicants(${j.id})">Applicants</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteJob(${j.id})">Delete</button></td></tr>`).join('')}
+      </table>` : `<div class="empty">You haven't posted anything yet — add your first job below.</div>`}
+    <div id="jobModalHolder"></div>
+    <div id="applicantsHolder"></div>
+  `;
+  document.getElementById('goWalletBtn').onclick = goToWallet;
+  document.getElementById('newJobBtn').onclick = () => {
+    let jImages = [];
+    document.getElementById('jobModalHolder').innerHTML = `
+      <div class="overlay" onclick="if(event.target===this) this.remove()">
+        <div class="modal">
+          <h3>Post something new</h3>
+          <p class="muted">💼 Job</p>
+          <div class="field"><label>Company Name</label><input value="${state.user.business_name || state.user.name}" disabled></div>
+          <div class="field"><label>Job Title (e.g. Delivery Rider)</label><input id="jTitle"></div>
+          <div class="field"><label>Position</label><input id="jPosition" placeholder="e.g. Full-time, Part-time, Contract"></div>
+          <div class="field"><label>Salary (optional)</label><input id="jSalary" placeholder="e.g. ₵1,500/month"></div>
+          <div class="field"><label>Company Address / Location</label><input id="jLocation"></div>
+          <div class="field"><label>Requirements (optional)</label><textarea id="jRequirements" placeholder="e.g. SHS certificate, 1 year experience..."></textarea></div>
+          <div class="field"><label>Describe the job</label><textarea id="jDesc"></textarea></div>
+          <div class="field"><label>Photos (optional, up to 5)</label>
+            <input type="file" id="jImageFile" accept="image/*" multiple>
+            <div class="muted" id="jImageStatus" style="margin-top:6px"></div>
+            <div id="jImagePreview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+          </div>
+          <div class="field"><label>Age Range (optional)</label>
+            <div style="display:flex;gap:8px">
+              <input id="jMinAge" type="number" min="16" placeholder="Min age" style="flex:1">
+              <input id="jMaxAge" type="number" min="16" placeholder="Max age" style="flex:1">
+            </div>
+          </div>
+          <div class="field"><label>Gender Preference (optional)</label>
+            <select id="jGender"><option value="">Any</option><option value="male">Male</option><option value="female">Female</option></select>
+          </div>
+          <p class="muted">${state.user.name}</p>
+          <button class="btn btn-primary" id="jSubmit" style="width:100%">Post on MakolaOnline</button>
+        </div>
+      </div>`;
+    document.getElementById('jImageFile').onchange = async (e) => {
+      const files = Array.from(e.target.files).slice(0, 5 - jImages.length);
+      const status = document.getElementById('jImageStatus');
+      for (const file of files) {
+        status.textContent = `Uploading ${jImages.length + 1}/5...`;
+        try {
+          const url = await uploadImage(file);
+          jImages.push(url);
+          document.getElementById('jImagePreview').innerHTML = jImages.map(u => `<img src="${u}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">`).join('');
+        } catch (err) { alert(err.message); }
+      }
+      status.textContent = jImages.length ? `✓ ${jImages.length}/5 photos added` : '';
+    };
+    document.getElementById('jSubmit').onclick = async () => {
+      try {
+        await api('/api/employer/jobs', { method: 'POST', body: JSON.stringify({
+          title: document.getElementById('jTitle').value,
+          position: document.getElementById('jPosition').value,
+          salary: document.getElementById('jSalary').value,
+          location: document.getElementById('jLocation').value,
+          description: document.getElementById('jDesc').value,
+          requirements: document.getElementById('jRequirements').value,
+          images: jImages,
+          min_age: document.getElementById('jMinAge').value || undefined,
+          max_age: document.getElementById('jMaxAge').value || undefined,
+          gender_preference: document.getElementById('jGender').value || undefined,
+        })});
+        document.querySelector('.overlay').remove();
+        render();
+      } catch (err) { alert(err.message); }
+    };
+  };
+}
+async function deleteJob(id) { await api('/api/employer/jobs/' + id, { method: 'DELETE' }); render(); }
+
+async function viewJobApplicants(jobId) {
+  const apps = await api(`/api/employer/jobs/${jobId}/applications`);
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Applicants (${apps.length})</h3>
+      ${apps.length ? apps.map(a => `
+        <div class="form-box" style="margin-bottom:10px">
+          <p><strong>${a.name}</strong> — ${a.email}</p>
+          <p class="muted">📞 ${a.phone || '—'}${a.whatsapp_number ? ' · WhatsApp: ' + a.whatsapp_number : ''}</p>
+          ${a.message ? `<p>"${a.message}"</p>` : ''}
+          <p class="muted" style="font-size:11px">${new Date(a.created_at).toLocaleString()}</p>
+        </div>
+      `).join('') : `<div class="empty">No applicants yet.</div>`}
+      <button class="btn btn-outline btn-sm" style="width:100%" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+
+/* ================= ADMIN ================= */
+let adminTab = 'wallet';
+async function renderAdmin(app) {
+  if (!state.user.isAdmin) { app.innerHTML = `<div class="error-box">Only Admin can view this page.</div>`; return; }
+  const tabs = [['wallet', 'Wallet'], ['add-vendor', 'Add Vendor'], ['vendors', 'Applications'], ['subscriptions', 'Subscriptions'],
+    ['products', 'Products'], ['jobs', 'Jobs'], ['coupons', 'Coupons'], ['deposits', 'Deposits'], ['orders', 'Orders'],
+    ['users', 'Users'], ['support', 'Support Inbox'], ['banners', 'Banners'], ['notifications', 'Notifications'], ['settings', 'Settings'],
+    ['lookup', 'User Lookup'], ['history', 'History']];
+  app.innerHTML = `
+    <h2 class="section-title">Admin Panel</h2>
+    <div class="tabs">${tabs.map(([id, label]) => `<button data-atab="${id}" class="${adminTab === id ? 'active' : ''}">${label}</button>`).join('')}</div>
+    <div id="adminContent"></div>
+  `;
+  document.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(app); });
+  const content = document.getElementById('adminContent');
+
+  if (adminTab === 'wallet') {
+    const summary = await api('/api/admin/wallet-summary');
+    content.innerHTML = `
+      <div class="wallet-row">
+        <div class="wallet-card" style="background:var(--green-dark)">Total Users<div class="amt">${summary.totalUsers}</div></div>
+      </div>
+      <p class="muted" style="margin-bottom:14px">This is everyone's money combined, for oversight only — you cannot withdraw it. Your own withdrawable balance (from your own deposits and vendor application fees) is shown separately below.</p>
+      <div class="wallet-row">
+        <div class="wallet-card">Main Wallet — Available (everyone)<div class="amt">${money(summary.totalAvailable)}</div></div>
+        <div class="wallet-card cashback">Main Wallet — Cashback (everyone)<div class="amt">${money(summary.totalCashback)}</div></div>
+        <div class="wallet-card">Main Wallet — Pending (everyone)<div class="amt">${money(summary.totalPending)}</div></div>
+      </div>
+      <div class="wallet-row">
+        <div class="wallet-card" style="background:var(--yellow);color:var(--green-dark)">Your Own Withdrawable Balance<div class="amt">${money(summary.adminAvailable)}</div></div>
+      </div>
+      <p class="muted">To withdraw your own balance, go to Profile → Wallet & Cashback → Withdraw (same as any user).</p>
+    `;
+  } else if (adminTab === 'vendors') {
+    const rows = await api('/api/admin/vendor-applications');
+    content.innerHTML = rows.length ? rows.map(r => `
+      <div class="form-box" style="margin-bottom:16px">
+        <p><strong>${r.name}</strong> (${r.email}) — applying as <strong>${r.type}</strong></p>
+        <p class="muted">${r.full_address || 'No address given'}</p>
+        <p class="muted">ID: ${r.id_type || '—'} ${r.id_number || ''} · Phone verified: ${r.phone_verified ? '✓' : '✗'} · Payout: ${r.payout_number || '—'}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">
+          ${r.id_front_url ? `<a href="${r.id_front_url}" target="_blank"><img src="${r.id_front_url}" style="height:70px;border-radius:6px"></a>` : ''}
+          ${r.id_back_url ? `<a href="${r.id_back_url}" target="_blank"><img src="${r.id_back_url}" style="height:70px;border-radius:6px"></a>` : ''}
+          ${r.selfie_url ? `<a href="${r.selfie_url}" target="_blank"><img src="${r.selfie_url}" style="height:70px;border-radius:6px"></a>` : ''}
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="adminDecide('vendor-applications',${r.id},'approve')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="adminDecide('vendor-applications',${r.id},'reject')">Reject</button>
+      </div>
+    `).join('') : `<div class="empty">No pending applications.</div>`;
+  } else if (adminTab === 'products') {
+    const rows = await api('/api/admin/products');
+    content.innerHTML = `<table><tr><th>Name</th><th>Reseller</th><th>Price</th><th>Status</th><th></th></tr>
+      ${rows.map(r => `<tr><td>${r.name}</td><td>${r.reseller_name}</td><td>${money(r.price)}</td><td><span class="badge ${r.status}">${r.status}</span></td>
+        <td>${r.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="adminDecide('products',${r.id},'approve')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="adminDecide('products',${r.id},'reject')">Reject</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="adminDeleteProduct(${r.id})">Delete</button></td></tr>`).join('')}
+      </table>`;
+  } else if (adminTab === 'jobs') {
+    const rows = await api('/api/admin/jobs');
+    content.innerHTML = `<table><tr><th>Title</th><th>Employer</th><th>Status</th><th></th></tr>
+      ${rows.map(r => `<tr><td>${r.title}</td><td>${r.employer_name}</td><td><span class="badge ${r.status}">${r.status}</span></td>
+        <td>${r.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="adminDecide('jobs',${r.id},'approve')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="adminDecide('jobs',${r.id},'reject')">Reject</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="adminDeleteJob(${r.id})">Delete</button></td></tr>`).join('')}
+      </table>`;
+  } else if (adminTab === 'deposits') {
+    const rows = await api('/api/admin/deposits');
+    content.innerHTML = rows.length ? `<table><tr><th>User</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+      ${rows.map(r => `<tr><td>${r.name} (${r.email})</td><td>${money(r.amount)}</td>
+        <td><span class="badge ${r.status}">${r.status}</span></td><td>${new Date(r.created_at).toLocaleString()}</td></tr>`).join('')}
+      </table>` : `<div class="empty">No deposits yet.</div>`;
+  } else if (adminTab === 'orders') {
+    const rows = await api('/api/admin/orders');
+    content.innerHTML = `
+      <input id="orderSearchBox" placeholder="🔍 Search by order number..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;background:var(--surface);color:var(--ink)">
+      <div id="orderSearchResults"></div>
+    `;
+    const renderOrderRows = (list) => {
+      document.getElementById('orderSearchResults').innerHTML = list.length ? `<table><tr><th>Order No</th><th>Customer</th><th>Total</th><th>Status</th><th></th></tr>
+        ${list.map(r => `<tr>
+          <td style="cursor:pointer;color:var(--green);font-weight:600" onclick='adminViewOrderDetail(${JSON.stringify(r).replace(/'/g, "&apos;")})'>${r.order_no}</td>
+          <td>${r.name}</td><td>${money(r.total)}</td>
+          <td><span class="badge ${r.status}">${r.status}</span></td>
+          <td>${r.status === 'expired' ? `
+              <button class="btn btn-primary btn-sm" onclick="adminResolveOrder(${r.id},'customer')">Refund Customer</button>
+              <button class="btn btn-outline btn-sm" onclick="adminResolveOrder(${r.id},'reseller')">Pay Reseller</button>
+            ` : ['solved', 'completed', 'rejected'].includes(r.status) ? '—' : `
+              <select onchange="adminOrderStatus(${r.id}, this.value)">
+                ${['processing', 'approved', 'shipped', 'completed', 'rejected'].map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>`}
+          </td></tr>`).join('')}
+        </table>` : `<div class="empty">No orders match that search.</div>`;
+    };
+    renderOrderRows(rows);
+    document.getElementById('orderSearchBox').oninput = (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      renderOrderRows(q ? rows.filter(r => r.order_no.toLowerCase().includes(q)) : rows);
+    };
+  } else if (adminTab === 'users') {
+    const rows = await api('/api/admin/users');
+    const group = (role, status) => rows.filter(r => r.role === role && (status ? r.status === status : true));
+    const userRow = (r) => `<tr><td>${r.name}</td><td>${r.email}</td><td><span class="badge ${r.status}">${r.status}</span></td>
+        <td>${r.status === 'active'
+          ? `<button class="btn btn-danger btn-sm" onclick="adminBan(${r.id})">Ban</button>`
+          : `<button class="btn btn-outline btn-sm" onclick="adminUnban(${r.id})">Unban</button>`}</td></tr>`;
+    const vendorRow = (r) => `<tr><td>${r.name}</td><td>${r.email}</td><td><span class="badge ${r.status}">${r.status}</span></td>
+        <td>${r.status === 'active'
+          ? `<button class="btn btn-danger btn-sm" onclick="adminBan(${r.id})">Ban</button>`
+          : `<button class="btn btn-outline btn-sm" onclick="adminUnban(${r.id})">Unban</button>`}
+        <button class="btn btn-outline btn-sm" onclick="adminDeleteVendorStatus(${r.id})">Remove Vendor Status</button></td></tr>`;
+    const section = (title, list, rowFn = userRow) => `
+      <h3 style="margin:20px 0 10px">${title} (${list.length})</h3>
+      ${list.length ? `<table><tr><th>Name</th><th>Email</th><th>Status</th><th></th></tr>${list.map(rowFn).join('')}</table>`
+        : `<div class="empty">None yet.</div>`}
+    `;
+    content.innerHTML = `
+      ${section('Customers', group('customer'))}
+      ${section('Resellers', group('reseller', 'active'), vendorRow)}
+      ${section('Deleted Resellers (Banned)', group('reseller', 'banned'))}
+      ${section('Employers', group('employer', 'active'), vendorRow)}
+      ${section('Deleted Employers (Banned)', group('employer', 'banned'))}
+    `;
+  } else if (adminTab === 'banners') {
+    const rows = await api('/api/banners');
+    let bImageUrl = null;
+    content.innerHTML = `
+      <div class="form-box" style="margin-bottom:20px">
+        <h3>Add a Slide</h3>
+        <p class="muted">Add a picture, text, or both. New slides are added to the carousel.</p>
+        <div class="field"><label>Picture (optional)</label>
+          <input type="file" id="bImageFile" accept="image/*">
+          <div class="muted" id="bImageStatus" style="margin-top:6px"></div>
+        </div>
+        <div class="field"><label>Text for this slide (optional)</label><input id="bText"></div>
+        <div class="field"><label>Link to open when tapped (optional)</label><input id="bLink"></div>
+        <button class="btn btn-primary" id="bSubmit">Add Slide</button>
+      </div>
+      ${rows.length ? `<table><tr><th>Preview</th><th>Active</th><th></th></tr>
+        ${rows.map(r => `<tr><td>${r.image_url ? `<img src="${r.image_url}" style="height:40px">` : ''}${r.text ? `<div class="muted">${r.text}</div>` : ''}</td><td>${r.is_active ? 'Yes' : 'No'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="adminDeleteBanner(${r.id})">Delete</button></td></tr>`).join('')}
+        </table>` : `<div class="empty">No slides yet — customers see a default message.</div>`}
+    `;
+    document.getElementById('bImageFile').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const status = document.getElementById('bImageStatus');
+      status.textContent = 'Uploading photo...';
+      try {
+        bImageUrl = await uploadImage(file);
+        status.textContent = '✓ Photo added';
+      } catch (err) {
+        status.textContent = '';
+        alert(err.message);
+      }
+    };
+    document.getElementById('bSubmit').onclick = async () => {
+      try {
+        await api('/api/admin/banners', { method: 'POST', body: JSON.stringify({
+          image_url: bImageUrl || undefined,
+          text: document.getElementById('bText').value || undefined,
+          link: document.getElementById('bLink').value || undefined,
+        })});
+        renderAdmin(app);
+      } catch (err) { alert(err.message); }
+    };
+  } else if (adminTab === 'add-vendor') {
+    content.innerHTML = `
+      <p class="muted" style="margin-bottom:14px">Add a reseller or employer yourself — no self-serve KYC needed. You're vouching for them.</p>
+      <div class="form-box">
+        <div class="field"><label>Type</label>
+          <select id="avType"><option value="reseller">Reseller</option><option value="employer">Employer</option></select>
+        </div>
+        <div class="field"><label>Full legal name</label><input id="avName"></div>
+        <div class="field"><label>Email address</label><input id="avEmail" type="email"></div>
+        <div class="field"><label>Phone number</label><input id="avPhone"></div>
+        <div class="field"><label>Ghana Card (optional)</label><input id="avCard" placeholder="e.g. GHA-123456789-0"></div>
+        <div id="avTypeFields"></div>
+        <div class="field"><label>Region</label><input id="avRegion" placeholder="e.g. Greater Accra"></div>
+        <div class="field"><label>Bank (for payouts, optional)</label><div id="avBankBox" class="muted">Loading banks...</div></div>
+        <div class="field"><label>Account number</label><input id="avAccNo"></div>
+        <div class="field"><label>Plan to assign</label><div id="avPlanBox" class="muted">Loading plans...</div></div>
+        <p class="muted">Marked Verified — added by Admin immediately, at no charge.</p>
+        <button class="btn btn-primary" id="avSubmit" style="width:100%">Add Vendor</button>
+      </div>
+      <div id="avResultHolder"></div>
+    `;
+
+    function renderTypeFields(type) {
+      document.getElementById('avTypeFields').innerHTML = type === 'employer' ? `
+        <div class="field"><label>Company name</label><input id="avBiz"></div>
+        <div class="field"><label>Their position (e.g. HR Manager, Owner)</label><input id="avPosition"></div>
+        <div class="field"><label>Company address</label><input id="avAddress"></div>
+      ` : `
+        <div class="field"><label>Business / store name</label><input id="avBiz"></div>
+        <div class="field"><label>What do they sell or offer? (optional)</label><input id="avCategory"></div>
+        <div class="field"><label>Business address</label><input id="avAddress"></div>
+      `;
+    }
+
+    let plansReady = false;
+    const loadAvPlans = async () => {
+      plansReady = false;
+      document.getElementById('avSubmit').disabled = true;
+      const type = document.getElementById('avType').value;
+      renderTypeFields(type);
+      const plans = await api('/api/plans?type=' + type);
+      document.getElementById('avPlanBox').innerHTML = `
+        <select id="avPlan">${plans.map(p => `<option value="${p.code}">${p.name} — ${money(p.price)}/mo</option>`).join('')}</select>`;
+      plansReady = true;
+      document.getElementById('avSubmit').disabled = false;
+    };
+    document.getElementById('avType').onchange = loadAvPlans;
+    await loadAvPlans();
+
+    api('/api/banks').then(banks => {
+      document.getElementById('avBankBox').innerHTML = `
+        <select id="avBank"><option value="">-- No bank yet --</option>${banks.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('')}</select>`;
+    }).catch(() => {
+      document.getElementById('avBankBox').innerHTML = `<p class="muted">Could not load bank list — you can add their bank account later from Admin → User Lookup.</p>`;
+    });
+
+    document.getElementById('avSubmit').onclick = async () => {
+      if (!plansReady) return; // guards against submitting mid-reload with a stale plan for the wrong type
+      const type = document.getElementById('avType').value;
+      const email = document.getElementById('avEmail').value.trim();
+      const name = document.getElementById('avName').value.trim();
+      if (!name || !email) { alert('Full name and email are required.'); return; }
+
+      const submitBtn = document.getElementById('avSubmit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding...';
+      try {
+        const bankSel = document.getElementById('avBank');
+        const bizEl = document.getElementById('avBiz');
+        const addrEl = document.getElementById('avAddress');
+        const result = await api('/api/admin/vendors/add-manual', { method: 'POST', body: JSON.stringify({
+          type, name, email,
+          phone: document.getElementById('avPhone').value,
+          ghana_card: document.getElementById('avCard').value,
+          business_name: bizEl ? bizEl.value : undefined,
+          business_category: type === 'reseller' ? document.getElementById('avCategory').value : undefined,
+          business_address: addrEl ? addrEl.value : undefined,
+          business_region: document.getElementById('avRegion').value,
+          position: type === 'employer' ? document.getElementById('avPosition').value : undefined,
+          bank_name: bankSel && bankSel.value ? bankSel.selectedOptions[0].dataset.name : undefined,
+          bank_code: bankSel ? bankSel.value : undefined,
+          account_number: document.getElementById('avAccNo').value,
+          plan_code: document.getElementById('avPlan').value,
+        })});
+        document.getElementById('avResultHolder').innerHTML = `
+          <div class="ok-box">Added! Temporary password for ${result.user.email}: <strong>${result.temp_password}</strong> — share this with them so they can log in and change it.</div>`;
+        // Clear the form fields (without re-rendering, so the success message above stays visible)
+        // so the same email can't accidentally be resubmitted for the next person.
+        ['avName', 'avEmail', 'avPhone', 'avCard', 'avRegion', 'avAccNo'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        if (bizEl) bizEl.value = '';
+        if (addrEl) addrEl.value = '';
+        const catEl = document.getElementById('avCategory'); if (catEl) catEl.value = '';
+        const posEl = document.getElementById('avPosition'); if (posEl) posEl.value = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Vendor';
+      } catch (err) {
+        alert(err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Vendor';
+      }
+    };
+  } else if (adminTab === 'subscriptions') {
+    const rows = await api('/api/admin/subscriptions');
+    content.innerHTML = rows.length ? `<table><tr><th>Name</th><th>Plan</th><th>Status</th><th>Renews</th><th></th></tr>
+      ${rows.map(r => `<tr><td>${r.name}<div class="muted">${r.email}</div></td><td>${r.plan_name}</td>
+        <td><span class="badge ${r.status === 'active' ? 'active' : 'rejected'}">${r.status}</span></td>
+        <td>${new Date(r.renews_at).toLocaleDateString()}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="adminRenewFree(${r.user_id}, '${r.plan_type}')">Renew Free</button></td></tr>`).join('')}
+      </table>` : `<div class="empty">No subscriptions yet.</div>`;
+  } else if (adminTab === 'coupons') {
+    const rows = await api('/api/admin/coupons');
+    content.innerHTML = `
+      <div class="form-box" style="margin-bottom:20px">
+        <h3>Create Coupon</h3>
+        <div class="field"><label>Who is this for</label>
+          <select id="cpAudience">
+            <option value="new_reseller">Customers — first-time reseller signup</option>
+            <option value="existing_reseller">Existing resellers — plan renewal/upgrade</option>
+            <option value="shopping">Anyone — discount at checkout (shopping)</option>
+          </select>
+        </div>
+        <div class="field"><label>Code (e.g. JOIN20)</label><input id="cpCode"></div>
+        <div class="field"><label>% off</label><input id="cpPercent" type="number" min="1" max="100"></div>
+        <div class="field"><label>Who can use it</label>
+          <select id="cpWho"><option value="">Everyone</option><option value="specific">One specific person</option></select>
+        </div>
+        <div class="field" id="cpTargetBox" style="display:none"><label>Their email</label><input id="cpTarget"></div>
+        <div class="field"><label>Expiry (optional)</label><input id="cpExpiry" type="date"></div>
+        <button class="btn btn-primary" id="cpSubmit">Create Coupon</button>
+      </div>
+      ${rows.length ? `<table><tr><th>Code</th><th>% Off</th><th>For</th><th>Expires</th><th></th></tr>
+        ${rows.map(c => `<tr><td>${c.code}</td><td>${c.percent_off}%</td><td>${c.audience}</td>
+          <td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="adminDeactivateCoupon(${c.id})">Deactivate</button></td></tr>`).join('')}
+        </table>` : `<div class="empty">No active coupons.</div>`}
+    `;
+    document.getElementById('cpWho').onchange = (e) => {
+      document.getElementById('cpTargetBox').style.display = e.target.value === 'specific' ? 'block' : 'none';
+    };
+    document.getElementById('cpSubmit').onclick = async () => {
+      try {
+        await api('/api/admin/coupons', { method: 'POST', body: JSON.stringify({
+          code: document.getElementById('cpCode').value,
+          percent_off: document.getElementById('cpPercent').value,
+          audience: document.getElementById('cpAudience').value,
+          target_email: document.getElementById('cpWho').value === 'specific' ? document.getElementById('cpTarget').value : undefined,
+          expires_at: document.getElementById('cpExpiry').value || undefined,
+        })});
+        renderAdmin(app);
+      } catch (err) { alert(err.message); }
+    };
+  } else if (adminTab === 'notifications') {
+    content.innerHTML = `
+      <div class="form-box">
+        <h3>Send Notification</h3>
+        <div class="field"><label>Message</label><textarea id="ntMessage" placeholder="Message to send..."></textarea></div>
+        <div class="field"><label>Send to</label>
+          <select id="ntAudience"><option value="everyone">Everyone</option><option value="resellers">Resellers only</option><option value="customers">Customers only</option></select>
+        </div>
+        <button class="btn btn-primary" id="ntSubmit">Send Notification</button>
+      </div>
+      <div id="ntResultHolder"></div>
+    `;
+    document.getElementById('ntSubmit').onclick = async () => {
+      try {
+        await api('/api/admin/notifications', { method: 'POST', body: JSON.stringify({
+          message: document.getElementById('ntMessage').value,
+          audience: document.getElementById('ntAudience').value,
+        })});
+        document.getElementById('ntResultHolder').innerHTML = `<div class="ok-box">Notification sent.</div>`;
+        document.getElementById('ntMessage').value = '';
+      } catch (err) { alert(err.message); }
+    };
+  } else if (adminTab === 'settings') {
+    const s = await api('/api/admin/settings');
+    content.innerHTML = `
+      <div class="form-box">
+        <h3>Cashback Settings</h3>
+        <p class="muted">Automatically credited to a customer's wallet once an order is completed. Unused cashback expires automatically.</p>
+        <div class="field"><label>Cashback %</label><input id="stPercent" type="number" min="0" max="100" value="${s.cashback_percent}"></div>
+        <div class="field"><label>Expires after (days)</label><input id="stExpiry" type="number" min="1" value="${s.cashback_expiry_days}"></div>
+        <button class="btn btn-primary" id="stSubmit">Save</button>
+      </div>
+    `;
+    document.getElementById('stSubmit').onclick = async () => {
+      try {
+        await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({
+          cashback_percent: document.getElementById('stPercent').value,
+          cashback_expiry_days: document.getElementById('stExpiry').value,
+        })});
+        renderAdmin(app);
+      } catch (err) { alert(err.message); }
+    };
+  } else if (adminTab === 'lookup') {
+    content.innerHTML = `
+      <div class="form-box" style="margin-bottom:20px">
+        <h3>Look Up a User</h3>
+        <p class="muted">Find anyone's full order and wallet history by email.</p>
+        <div class="field"><label>Their email</label><input id="lkEmail" type="email"></div>
+        <button class="btn btn-primary" id="lkSubmit">Look Up</button>
+      </div>
+      <div id="lkResult"></div>
+    `;
+    document.getElementById('lkSubmit').onclick = async () => {
+      try {
+        const r = await api('/api/admin/users/lookup?email=' + encodeURIComponent(document.getElementById('lkEmail').value));
+        document.getElementById('lkResult').innerHTML = `
+          <div class="form-box" style="margin-bottom:16px">
+            <p><strong>${r.user.name}</strong> — ${r.user.email}</p>
+            <p class="muted">${r.user.role} · <span class="badge ${r.user.status}">${r.user.status}</span> · joined ${new Date(r.user.created_at).toLocaleDateString()}</p>
+          </div>
+          <h4 style="margin-bottom:8px">Wallet</h4>
+          <table style="margin-bottom:16px"><tr><th>Type</th><th>Balance</th></tr>
+            ${r.wallet.map(w => `<tr><td>${w.type}</td><td>${money(w.balance)}</td></tr>`).join('')}
+          </table>
+          <h4 style="margin-bottom:8px">Orders (${r.orders.length})</h4>
+          ${r.orders.length ? `<table style="margin-bottom:16px"><tr><th>Order No</th><th>Total</th><th>Status</th></tr>
+            ${r.orders.map(o => `<tr><td>${o.order_no}</td><td>${money(o.total)}</td><td><span class="badge ${o.status}">${o.status}</span></td></tr>`).join('')}
+            </table>` : `<p class="muted">No orders.</p>`}
+          <h4 style="margin-bottom:8px">Recent Wallet Transactions</h4>
+          <table><tr><th>Type</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+            ${r.transactions.map(t => `<tr><td>${t.type}</td><td>${money(t.amount)}</td><td><span class="badge ${t.status}">${t.status}</span></td><td>${new Date(t.created_at).toLocaleDateString()}</td></tr>`).join('')}
+          </table>
+        `;
+      } catch (err) { alert(err.message); }
+    };
+  } else if (adminTab === 'support') {
+    const convos = await api('/api/admin/support/conversations');
+    content.innerHTML = convos.length ? convos.map(c => `
+      <div class="menu-item" data-support-user="${c.user_id}" style="cursor:pointer">
+        <span class="mi-icon">✉️</span>
+        <span class="mi-label">${c.name} (${c.email})${Number(c.unread) > 0 ? ` <span class="badge pending">${c.unread} new</span>` : ''}
+          <div class="muted" style="font-size:12px">${(c.last_message || '').slice(0, 60)}</div>
+        </span>
+        <span class="mi-chevron">›</span>
+      </div>
+    `).join('') : `<div class="empty">No support conversations yet.</div>`;
+    document.querySelectorAll('[data-support-user]').forEach(el => el.onclick = () => openAdminSupportThread(el.dataset.supportUser, app));
+  } else if (adminTab === 'history') {
+    const rows = await api('/api/admin/history');
+    content.innerHTML = `<table><tr><th>User</th><th>Action</th><th>Details</th><th>Date</th></tr>
+      ${rows.map(r => `<tr style="cursor:pointer" onclick='viewHistoryDetail(${JSON.stringify(r).replace(/'/g, "&apos;")})'><td>${r.name}</td><td>${r.action}</td><td>${r.details || '—'}</td><td>${new Date(r.created_at).toLocaleString()}</td></tr>`).join('')}
+      </table>`;
+  }
+}
+
+async function adminRenewFree(userId, planType) {
+  const plans = await api('/api/plans?type=' + planType);
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Renew (Free)</h3>
+      <p class="muted">Choose a plan to renew them on — leave as-is or switch, no charge either way.</p>
+      ${plans.map(p => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+          <input type="radio" name="renewPlanPick" value="${p.code}">
+          <span>${p.name} — ${money(p.price)}/mo</span>
+        </label>`).join('')}
+      <button class="btn btn-primary" id="renewFreeGo" style="width:100%;margin-top:10px">Renew Free</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('renewFreeGo').onclick = async () => {
+    const picked = document.querySelector('input[name="renewPlanPick"]:checked');
+    try {
+      await api(`/api/admin/subscriptions/${userId}/renew`, { method: 'POST', body: JSON.stringify({ plan_code: picked ? picked.value : undefined }) });
+      overlay.remove();
+      render();
+    } catch (err) { alert(err.message); }
+  };
+}
+async function adminDeactivateCoupon(id) {
+  await api('/api/admin/coupons/' + id, { method: 'DELETE' }); render();
+}
+
+async function openAdminSupportThread(userId, app) {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Message Center</h3>
+      <div id="adminSupportList" style="max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px"></div>
+      <div style="display:flex;gap:8px">
+        <input id="adminSupportInput" placeholder="Type a reply...">
+        <button class="btn btn-primary btn-sm" id="adminSupportSend">Send</button>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  async function loadThread() {
+    const msgs = await api('/api/admin/support/messages/' + userId);
+    document.getElementById('adminSupportList').innerHTML = msgs.length ? msgs.map(m => `
+      <div class="chat-msg ${m.sender_role === 'admin' ? 'me' : 'bot'}"><strong>${m.sender_role === 'admin' ? 'You' : 'User'}:</strong> ${m.message}</div>
+    `).join('') : `<p class="muted">No messages yet.</p>`;
+  }
+  await loadThread();
+  document.getElementById('adminSupportSend').onclick = async () => {
+    const input = document.getElementById('adminSupportInput');
+    if (!input.value.trim()) return;
+    try {
+      await api('/api/admin/support/messages/' + userId, { method: 'POST', body: JSON.stringify({ message: input.value }) });
+      input.value = '';
+      await loadThread();
+    } catch (err) { alert(err.message); }
+  };
+}
+
+async function adminDecide(resource, id, decision) {
+  try { await api(`/api/admin/${resource}/${id}/${decision}`, { method: 'POST' }); renderAdmin(document.getElementById('app')); }
+  catch (err) { alert(err.message); }
+}
+async function adminDeleteProduct(id) {
+  if (!confirm('Delete this product permanently?')) return;
+  try { await api('/api/admin/products/' + id, { method: 'DELETE' }); renderAdmin(document.getElementById('app')); }
+  catch (err) { alert(err.message); }
+}
+async function adminDeleteJob(id) {
+  if (!confirm('Delete this job permanently?')) return;
+  try { await api('/api/admin/jobs/' + id, { method: 'DELETE' }); renderAdmin(document.getElementById('app')); }
+  catch (err) { alert(err.message); }
+}
+async function adminDeleteVendorStatus(id) {
+  if (!confirm('Remove this person\'s Reseller/Employer status? Their listings and subscription will be deleted — they become a regular customer and can re-apply later.')) return;
+  try { await api(`/api/admin/users/${id}/delete-vendor-status`, { method: 'POST' }); renderAdmin(document.getElementById('app')); }
+  catch (err) { alert(err.message); }
+}
+async function adminOrderStatus(id, status) {
+  try { await api(`/api/admin/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }); }
+  catch (err) { alert(err.message); }
+}
+function viewHistoryDetail(h) {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>${h.action}</h3>
+      ${h.name ? `<p><strong>User:</strong> ${h.name}</p>` : ''}
+      <p><strong>Details:</strong> ${h.details || '—'}</p>
+      <p><strong>Date &amp; Time:</strong> ${new Date(h.created_at).toLocaleString()}</p>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function adminViewOrderDetail(r) {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Order ${r.order_no}</h3>
+      <p><strong>Status:</strong> <span class="badge ${r.status}">${r.status}</span></p>
+      <p><strong>Customer:</strong> ${r.name} (${r.email})</p>
+      <p><strong>Total:</strong> ${money(r.total)}</p>
+      <p><strong>Placed:</strong> ${new Date(r.created_at).toLocaleString()}</p>
+      ${r.customer_name ? `<p><strong>Delivery Name:</strong> ${r.customer_name}</p>` : ''}
+      ${r.customer_phone ? `<p><strong>Phone:</strong> ${r.customer_phone}${r.whatsapp_enabled ? ' (WhatsApp)' : ''}</p>` : ''}
+      ${r.customer_address ? `<p><strong>Address:</strong> ${r.customer_address}${r.customer_region ? ', ' + r.customer_region : ''}</p>` : ''}
+      ${r.delivery_deadline ? `<p><strong>Delivery Deadline:</strong> ${new Date(r.delivery_deadline).toLocaleString()}</p>` : ''}
+      ${r.reject_reason ? `<p><strong>Decline Reason:</strong> ${r.reject_reason}</p>` : ''}
+      ${r.resolved_winner ? `<p><strong>Dispute Resolved For:</strong> ${r.resolved_winner}</p>` : ''}
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="this.closest('.overlay').remove()">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function adminResolveOrder(id, winner) {
+  const label = winner === 'customer' ? 'refund the customer and ban the reseller' : 'pay the reseller and ban the customer';
+  if (!confirm(`This will ${label}. This cannot be undone. Continue?`)) return;
+  try {
+    await api(`/api/admin/orders/${id}/resolve`, { method: 'POST', body: JSON.stringify({ winner }) });
+    render();
+  } catch (err) { alert(err.message); }
+}
+async function adminBan(id) {
+  if (!confirm('Zero Tolerance to Fraud — are you sure you want to ban this user?')) return;
+  await api(`/api/admin/users/${id}/ban`, { method: 'POST' }); renderAdmin(document.getElementById('app'));
+}
+async function adminUnban(id) { await api(`/api/admin/users/${id}/unban`, { method: 'POST' }); renderAdmin(document.getElementById('app')); }
+async function adminDeleteBanner(id) { await api(`/api/admin/banners/${id}`, { method: 'DELETE' }); renderAdmin(document.getElementById('app')); }
+
+/* ================= AUTH PAGES ================= */
+function renderLogin(app) {
+  app.innerHTML = `
+    <div class="form-box">
+      <h2>Welcome back</h2>
+      <p class="muted">Login to MakolaOnline</p>
+      <div id="loginError"></div>
+      <div class="field"><label>Email</label><input id="loginEmail" type="email"></div>
+      <div class="field"><label>Password</label><input id="loginPassword" type="password"></div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%">Login</button>
+      <div class="switch-link">New to MakolaOnline? <a href="#register">Create an account</a></div>
+    </div>
+  `;
+  document.getElementById('loginBtn').onclick = async () => {
+    try {
+      const data = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value,
+      })});
+      state.token = data.token; localStorage.setItem('mko_token', data.token);
+      state.user = data.user;
+      go('home');
+    } catch (err) {
+      document.getElementById('loginError').innerHTML = `<div class="error-box">${err.message}</div>`;
+    }
+  };
+}
+
+function renderRegister(app) {
+  app.innerHTML = `
+    <div class="form-box">
+      <h2>Create your account</h2>
+      <p class="muted">Join MakolaOnline — buy, sell &amp; find work</p>
+      <div id="regError"></div>
+      <div class="field"><label>Full Name</label><input id="regName"></div>
+      <div class="field"><label>Email</label><input id="regEmail" type="email"></div>
+      <div class="field"><label>Phone</label><input id="regPhone"></div>
+      <div class="field"><label>Ghana Card (optional)</label><input id="regCard"></div>
+      <div class="field"><label>Password</label><input id="regPassword" type="password"></div>
+      <button class="btn btn-primary" id="regBtn" style="width:100%">Create Account</button>
+      <div class="switch-link">Already have an account? <a href="#login">Login</a></div>
+    </div>
+  `;
+  document.getElementById('regBtn').onclick = async () => {
+    try {
+      const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({
+        name: document.getElementById('regName').value,
+        email: document.getElementById('regEmail').value,
+        phone: document.getElementById('regPhone').value,
+        ghana_card: document.getElementById('regCard').value,
+        password: document.getElementById('regPassword').value,
+      })});
+      state.token = data.token; localStorage.setItem('mko_token', data.token);
+      state.user = data.user;
+      go('home');
+    } catch (err) {
+      document.getElementById('regError').innerHTML = `<div class="error-box">${err.message}</div>`;
+    }
+  };
+}
+
+/* ================= PRIVACY / HELP ================= */
+function renderPrivacy(app) {
+  app.innerHTML = `
+    <div class="form-box" style="max-width:640px">
+      <h2>Privacy Policy</h2>
+      <p class="muted">Last updated 2026</p>
+      <p>MakolaOnline collects only the information needed to operate the marketplace: your name, email, phone, delivery addresses, and transaction records.</p>
+      <p><strong>Zero Tolerance to Fraud.</strong> Any account found engaging in fraud, scams, or fake listings is automatically banned and reported. All such actions are logged permanently in our history records for investigation.</p>
+      <p>We never sell your personal data to third parties. Deposit screenshots and Ghana Card details are used solely for identity verification and payment confirmation.</p>
+    </div>
+  `;
+}
+
+const FAQ = [
+  { q: /deposit/i, a: "Go to Profile → Wallet & Cashback → Deposit. Enter an amount and you'll be taken to a secure checkout (card, bank transfer, or mobile money). Your Available Balance updates automatically once payment goes through — no need to wait for anyone to approve it." },
+  { q: /withdraw/i, a: "Go to Profile → Wallet & Cashback → Withdraw. You'll need a saved bank account and your 5-digit security code. Money is sent out automatically." },
+  { q: /security code|pin/i, a: "Your security code is a 5-digit PIN that confirms withdrawals. Set or change it under Profile → Wallet & Cashback → Security Code. Forgot it? Ask Admin to reset it for you." },
+  { q: /bank account/i, a: "Add a bank account under Profile → Wallet & Cashback → Add Bank Account. We verify the account holder's name automatically before saving it." },
+  { q: /cashback/i, a: "Cashback is credited automatically once an order is completed. It accumulates separately and expires after a set number of days if unused — move it into your Available Balance any time from the Wallet page to spend or withdraw it." },
+  { q: /coupon|discount code/i, a: "There are two kinds: MakolaOnline coupons (platform-wide) and a Seller's Discount Code (created by an individual reseller for their own product). Enter either at checkout." },
+  { q: /order.*(status|track)|track.*order|where.*order/i, a: "Check the Order tab for status: Processing (awaiting seller review) → Approved → Shipped → Completed (once you confirm delivery). You'll get a notification at each step." },
+  { q: /cancel|refund/i, a: "If a seller declines your order, you're refunded automatically. If a seller doesn't deliver by the promised date, the order becomes 'expired' and our team reviews it directly with both sides — you'll be refunded if you're in the right." },
+  { q: /mark.*deliver|confirm.*deliver|received/i, a: "Once your item arrives, open the order and tap 'Mark as Delivered'. This is what releases payment to the seller, so only do it once you've actually received everything." },
+  { q: /vendor|reseller|employer|become.*sell|start selling|post.*job/i, a: "Go to MKO-VENDOR, choose Reseller (sell products) or Employer (post jobs), and complete the short registration (KYC + business info + plan). Admin reviews it before you go live." },
+  { q: /plan|subscription|starter|business|unlimited/i, a: "Reseller plans: Starter ₵20/mo (up to 20 products, items under ₵1,000), Business ₵50/mo (unlimited products, items under ₵5,000), Unlimited ₵100/mo (no limits). Employers have a single ₵100/mo Unlimited plan. Manage or renew yours under Profile → My Subscription." },
+  { q: /renew|expired plan|suspended/i, a: "If your plan lapses, your dashboard is paused until you renew. Go to Profile → My Subscription → Renew Now, choose a plan, and pay from your Available Balance (deposit first if needed)." },
+  { q: /product limit|how many products/i, a: "Your plan sets how many products you can list and the maximum price per item — see Profile → My Subscription for your current limits." },
+  { q: /chat.*seller|chat.*buyer|message.*order/i, a: "Once a seller approves your order, a Chat button appears on that order so you can message each other directly about delivery." },
+  { q: /ban|fraud|suspend/i, a: "MakolaOnline has Zero Tolerance to Fraud. A banned account can only use the Message Center to reach Admin — everything else is disabled until it's resolved." },
+  { q: /notification|bell/i, a: "Tap the 🔔 bell icon in the header to see your notifications — opening it marks everything as read." },
+  { q: /price cap|maximum price/i, a: "Each reseller plan has a maximum price per item (Starter ₵1,000, Business ₵5,000, Unlimited: no cap). Upgrade your plan to list higher-value items." },
+];
+function askBot(text) {
+  const hit = FAQ.find(f => f.q.test(text));
+  return hit ? hit.a : null;
+}
+function renderHelp(app) {
+  app.innerHTML = `
+    <div class="form-box" style="max-width:640px">
+      <h2>Help Center</h2>
+      <p class="muted">Common questions</p>
+      ${FAQ.map(f => `<p><strong>${f.q.source.split('|')[0]}?</strong> ${f.a}</p>`).join('')}
+      <p class="muted">Or use the chat bubble in the corner for quick answers.</p>
+    </div>
+  `;
+}
+
+async function renderMessageCenter(content) {
+  content.innerHTML = `
+    <h3 style="margin-bottom:10px">Message Center</h3>
+    <p class="muted" style="margin-bottom:10px">Talk directly with Admin.</p>
+    <div id="msgCenterList" style="max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px"></div>
+    <div style="display:flex;gap:8px">
+      <input id="msgCenterInput" placeholder="Type a message...">
+      <button class="btn btn-primary btn-sm" id="msgCenterSend">Send</button>
+    </div>
+  `;
+  async function loadMsgs() {
+    const msgs = await api('/api/support/messages');
+    document.getElementById('msgCenterList').innerHTML = msgs.length ? msgs.map(m => `
+      <div class="chat-msg ${m.sender_role === 'user' ? 'me' : 'bot'}"><strong>${m.sender_role === 'user' ? 'You' : 'Admin'}:</strong> ${m.message}</div>
+    `).join('') : `<p class="muted">No messages yet — send one below.</p>`;
+    document.getElementById('msgCenterList').scrollTop = 999999;
+  }
+  await loadMsgs();
+  refreshMsgBadge();
+  document.getElementById('msgCenterSend').onclick = async () => {
+    const input = document.getElementById('msgCenterInput');
+    if (!input.value.trim()) return;
+    try {
+      await api('/api/support/messages', { method: 'POST', body: JSON.stringify({ message: input.value }) });
+      input.value = '';
+      await loadMsgs();
+    } catch (err) { alert(err.message); }
+  };
+}
+
+async function renderBannedView(app) {
+  app.innerHTML = `<div id="bannedHolder"></div>`;
+  const holder = document.getElementById('bannedHolder');
+  holder.innerHTML = `<div class="error-box">🚫 Your account has been banned. Use the Message Center below to reach Admin about this — everything else is disabled.</div>`;
+  const msgBox = document.createElement('div');
+  holder.appendChild(msgBox);
+  await renderMessageCenter(msgBox);
+}
+
+/* ---------------- Chat widget ---------------- */
+const chatBubble = document.getElementById('chatBubble');
+const chatWindow = document.getElementById('chatWindow');
+const chatBody = document.getElementById('chatBody');
+chatBubble.onclick = () => {
+  chatWindow.classList.toggle('open');
+  if (!chatBody.childElementCount) addChatMsg('bot', "Hi! I'm the MakolaOnline helper. Ask me about deposits, orders, or becoming a vendor.");
+};
+function addChatMsg(who, text) {
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + who;
+  div.textContent = text;
+  chatBody.appendChild(div);
+  chatBody.scrollTop = chatBody.scrollHeight;
+}
+document.getElementById('chatSend').onclick = sendChat;
+document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  addChatMsg('me', text);
+  input.value = '';
+  const answer = askBot(text);
+  setTimeout(() => {
+    if (answer) {
+      addChatMsg('bot', answer);
+    } else {
+      addChatMsg('bot', "I'm not sure about that — want me to send this to Admin so a real person can help?");
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary btn-sm';
+      btn.style.alignSelf = 'flex-start';
+      btn.textContent = 'Send to Admin';
+      btn.onclick = async () => {
+        if (!state.user) { chatWindow.classList.remove('open'); go('login'); return; }
+        try {
+          await api('/api/support/messages', { method: 'POST', body: JSON.stringify({ message: text }) });
+          addChatMsg('bot', "Sent! Admin will reply in your Message Center (Profile → Message Center).");
+          btn.remove();
+        } catch (err) { addChatMsg('bot', err.message); }
+      };
+      chatBody.appendChild(btn);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+  }, 400);
+}
+
+/* ---------------- Boot ---------------- */
+(async function boot() {
+  await loadUser();
+  render();
+  refreshBell();
+  refreshMsgBadge();
+})();
+</script>
+</body>
+</html>
