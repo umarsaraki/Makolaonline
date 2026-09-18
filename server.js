@@ -1848,7 +1848,7 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
   if (!plan) return res.status(400).json({ error: 'Please choose a valid plan.' });
 
   const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email.toLowerCase()]);
-  if (existing.rows.length) return res.status(409).json({ error: 'This email is already registered.' });
+  if (existing.rows.length) return res.status(409).json({ error: `The email "${email.toLowerCase()}" is already registered.` });
 
   const client = await pool.connect();
   try {
