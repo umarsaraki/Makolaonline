@@ -1847,9 +1847,14 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
   const plan = planRes.rows[0];
   if (!plan) return res.status(400).json({ error: 'Please choose a valid plan.' });
 
-  const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email.toLowerCase()]);
-  if (existing.rows.length) return res.status(409).json({ error: `The email "${email.toLowerCase()}" is already registered.` });
-
+  const existing = await pool.query('SELECT id, role, status, created_at FROM users WHERE email=$1', [email.toLowerCase()]);
+  if (existing.rows.length) {
+    const ex = existing.rows[0];
+    const d = new Date(ex.created_at).toLocaleDateString();
+    return res.status(409).json({
+      error: `"${email.toLowerCase()}" already exists (${ex.role}, ${ex.status}, added ${d}). See User Lookup.`,
+    });
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
