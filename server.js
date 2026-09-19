@@ -1848,25 +1848,60 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
   if (!plan) return res.status(400).json({ error: 'Please choose a valid plan.' });
 
   const existing = await pool.query('SELECT id, role, status, created_at FROM users WHERE email=$1', [email.toLowerCase()]);
-  if (existing.rows.length) {
-    const ex = existing.rows[0];
-    const d = new Date(ex.created_at).toLocaleDateString();
+  const existingUser = existing.rows[0];
+
+  // Someone who's already a vendor (or Admin) can't be re-added — but an existing plain
+  // Customer account CAN be upgraded in place, below, instead of being blocked outright.
+  if (existingUser && existingUser.role !== 'customer') {
+    const d = new Date(existingUser.created_at).toLocaleDateString();
     return res.status(409).json({
-      error: `"${email.toLowerCase()}" already exists (${ex.role}, ${ex.status}, added ${d}). See User Lookup.`,
+      error: `"${email.toLowerCase()}" is already a ${existingUser.role} (${existingUser.status}, added ${d}). See User Lookup.`,
     });
   }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const tempPassword = crypto.randomBytes(5).toString('hex');
-    const hash = await bcrypt.hash(tempPassword, 10);
-    const userRes = await client.query(
-      `INSERT INTO users (name, email, phone, whatsapp_number, password_hash, role, ghana_card, business_name, business_category, business_address, business_region, position, added_by_admin)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true) RETURNING id, name, email`,
-      [name, email.toLowerCase(), phone || null, whatsapp_number || phone || null, hash, type, ghana_card || null, business_name || null, business_category || null, business_address || null, business_region || null, position || null]
-    );
-    const user = userRes.rows[0];
-    await client.query(`INSERT INTO wallet (user_id, balance, type) VALUES ($1,0,'available'),($1,0,'cashback'),($1,0,'pending')`, [user.id]);
+    let user, tempPassword = null;
+
+    if (existingUser) {
+      // Upgrade the existing customer in place — they keep their own password/login.
+      const upd = await client.query(
+        `UPDATE users SET role=$1, name=$2, phone=COALESCE($3,phone), whatsapp_number=COALESCE($4,whatsapp_number),
+           ghana_card=COALESCE($5,ghana_card), business_name=$6, business_category=$7, business_address=$8,
+           business_region=$9, position=$10
+         WHERE id=$11 RETURNING id, name, email`,
+        [type, name, phone || null, whatsapp_number || phone || null, ghana_card || null,
+          business_name || null, business_category || null, business_address || null, business_region || null, position || null,
+          existingUser.id]
+      );
+      user = upd.rows[0];
+      await client.query(
+        `INSERT INTO wallet (user_id, balance, type) VALUES ($1,0,'available'),($1,0,'cashback'),($1,0,'pending')
+         ON CONFLICT (user_id, type) DO NOTHING`,
+        [user.id]
+      );
+      await client.query(
+        `INSERT INTO subscriptions (user_id, plan_id, status, renews_at) VALUES ($1,$2,'active', NOW() + INTERVAL '1 month')
+         ON CONFLICT (user_id) DO UPDATE SET plan_id=$2, status='active', renews_at=NOW() + INTERVAL '1 month'`,
+        [user.id, plan.id]
+      );
+    } else {
+      // Brand new person — create the account from scratch with a temporary password.
+      tempPassword = crypto.randomBytes(5).toString('hex');
+      const hash = await bcrypt.hash(tempPassword, 10);
+      const userRes = await client.query(
+        `INSERT INTO users (name, email, phone, whatsapp_number, password_hash, role, ghana_card, business_name, business_category, business_address, business_region, position, added_by_admin)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true) RETURNING id, name, email`,
+        [name, email.toLowerCase(), phone || null, whatsapp_number || phone || null, hash, type, ghana_card || null, business_name || null, business_category || null, business_address || null, business_region || null, position || null]
+      );
+      user = userRes.rows[0];
+      await client.query(`INSERT INTO wallet (user_id, balance, type) VALUES ($1,0,'available'),($1,0,'cashback'),($1,0,'pending')`, [user.id]);
+      await client.query(
+        `INSERT INTO subscriptions (user_id, plan_id, status, renews_at) VALUES ($1,$2,'active', NOW() + INTERVAL '1 month')`,
+        [user.id, plan.id]
+      );
+    }
 
     if (bank_code && account_number) {
       const resolved = await flw.resolveAccount({ account_number, account_bank: bank_code }).catch(() => null);
@@ -1876,15 +1911,9 @@ app.post('/api/admin/vendors/add-manual', authenticate, requireAdmin, async (req
       );
     }
 
-    // Admin-added vendors start active immediately — no payment collected.
-    await client.query(
-      `INSERT INTO subscriptions (user_id, plan_id, status, renews_at) VALUES ($1,$2,'active', NOW() + INTERVAL '1 month')`,
-      [user.id, plan.id]
-    );
-
     await client.query('COMMIT');
-    await logHistory(user.id, 'added_by_admin', `Added as ${type} on ${plan.name} plan by Admin`);
-    res.status(201).json({ user, temp_password: tempPassword });
+    await logHistory(user.id, 'added_by_admin', `${existingUser ? 'Upgraded existing customer to' : 'Added as'} ${type} on ${plan.name} plan by Admin`);
+    res.status(201).json({ user, temp_password: tempPassword, upgraded: !!existingUser });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(400).json({ error: safeErrorMessage(err) });
