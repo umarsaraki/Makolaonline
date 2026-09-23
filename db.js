@@ -334,8 +334,23 @@ CREATE TABLE IF NOT EXISTS job_applications (
   job_id INT REFERENCES jobs(id) ON DELETE CASCADE,
   applicant_id INT REFERENCES users(id) ON DELETE CASCADE,
   message TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  reject_reason TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(job_id, applicant_id)
+);
+ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending';
+ALTER TABLE job_applications DROP CONSTRAINT IF EXISTS job_applications_status_check;
+ALTER TABLE job_applications ADD CONSTRAINT job_applications_status_check CHECK (status IN ('pending','approved','rejected'));
+ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS reject_reason TEXT;
+
+-- Chat between an employer and a job applicant, while the application is still pending.
+CREATE TABLE IF NOT EXISTS application_messages (
+  id SERIAL PRIMARY KEY,
+  application_id INT REFERENCES job_applications(id) ON DELETE CASCADE,
+  sender_id INT REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Message Center: one running thread per user with Admin. Used when the Help Center bot
@@ -392,7 +407,7 @@ async function initSchema() {
      ON CONFLICT (key) DO NOTHING`
   );
 
-  console.log('✅ Schema ready (24 tables)');
+  console.log('✅ Schema ready (25 tables)');
 }
 
 async function getSetting(key, fallback) {
