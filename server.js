@@ -532,6 +532,80 @@ app.get('/api/employer/jobs/:id/applications', authenticate, requireRole('employ
   res.json(rows);
 });
 
+// Approving shares contact info both ways — from here on they can talk directly (incl. WhatsApp).
+app.post('/api/employer/applications/:id/approve', authenticate, requireRole('employer'), async (req, res) => {
+  const appRes = await pool.query(
+    `SELECT ja.*, j.title, j.employer_id FROM job_applications ja JOIN jobs j ON j.id=ja.job_id WHERE ja.id=$1 AND j.employer_id=$2`,
+    [req.params.id, req.user.id]
+  );
+  const application = appRes.rows[0];
+  if (!application) return res.status(404).json({ error: 'Application not found.' });
+  await pool.query(`UPDATE job_applications SET status='approved' WHERE id=$1`, [application.id]);
+  await notifyUser(application.applicant_id, `You were approved for "${application.title}"! Check the job for the employer's contact details.`);
+  const applicant = await pool.query('SELECT whatsapp_number FROM users WHERE id=$1', [application.applicant_id]);
+  if (applicant.rows[0]) await sendWhatsApp(applicant.rows[0].whatsapp_number, `MakolaOnline: Good news! You were approved for "${application.title}". Open the app to see the employer's contact details.`);
+  await logHistory(req.user.id, 'application_approved', `Approved applicant for "${application.title}"`);
+  res.json({ ok: true });
+});
+
+app.post('/api/employer/applications/:id/reject', authenticate, requireRole('employer'), async (req, res) => {
+  const { reason } = req.body;
+  if (!reason || !reason.trim()) return res.status(400).json({ error: 'Please give a reason for the applicant to see.' });
+  const appRes = await pool.query(
+    `SELECT ja.*, j.title, j.employer_id FROM job_applications ja JOIN jobs j ON j.id=ja.job_id WHERE ja.id=$1 AND j.employer_id=$2`,
+    [req.params.id, req.user.id]
+  );
+  const application = appRes.rows[0];
+  if (!application) return res.status(404).json({ error: 'Application not found.' });
+  await pool.query(`UPDATE job_applications SET status='rejected', reject_reason=$1 WHERE id=$2`, [reason.trim(), application.id]);
+  await notifyUser(application.applicant_id, `Your application for "${application.title}" was not successful: ${reason.trim()}`);
+  await logHistory(req.user.id, 'application_rejected', `Rejected applicant for "${application.title}": ${reason.trim()}`);
+  res.json({ ok: true });
+});
+
+// A job-seeker's own list of applications, with the employer's contact info once approved.
+app.get('/api/my/applications', authenticate, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT ja.*, j.title, u.name AS employer_name, u.phone AS employer_phone, u.whatsapp_number AS employer_whatsapp
+     FROM job_applications ja JOIN jobs j ON j.id=ja.job_id JOIN users u ON u.id=j.employer_id
+     WHERE ja.applicant_id=$1 ORDER BY ja.created_at DESC`,
+    [req.user.id]
+  );
+  res.json(rows);
+});
+
+/* ---- Application chat (employer <-> applicant, while pending) ---- */
+
+async function canAccessApplicationChat(applicationId, userId) {
+  const r = await pool.query(
+    `SELECT 1 FROM job_applications ja WHERE ja.id=$1 AND ja.applicant_id=$2
+     UNION
+     SELECT 1 FROM job_applications ja JOIN jobs j ON j.id=ja.job_id WHERE ja.id=$1 AND j.employer_id=$2`,
+    [applicationId, userId]
+  );
+  return r.rows.length > 0;
+}
+
+app.get('/api/applications/:id/messages', authenticate, async (req, res) => {
+  if (!(await canAccessApplicationChat(req.params.id, req.user.id))) return res.status(403).json({ error: 'Not your application.' });
+  const { rows } = await pool.query(
+    `SELECT m.*, u.name AS sender_name FROM application_messages m JOIN users u ON u.id=m.sender_id WHERE m.application_id=$1 ORDER BY m.created_at`,
+    [req.params.id]
+  );
+  res.json(rows);
+});
+
+app.post('/api/applications/:id/messages', authenticate, async (req, res) => {
+  if (!(await canAccessApplicationChat(req.params.id, req.user.id))) return res.status(403).json({ error: 'Not your application.' });
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message cannot be empty.' });
+  const { rows } = await pool.query(
+    `INSERT INTO application_messages (application_id, sender_id, message) VALUES ($1,$2,$3) RETURNING *`,
+    [req.params.id, req.user.id, message.trim()]
+  );
+  res.status(201).json(rows[0]);
+});
+
 /* ------------------------------------------------------------------ */
 /* MKO-VENDOR — apply as reseller/employer                            */
 /* ------------------------------------------------------------------ */
